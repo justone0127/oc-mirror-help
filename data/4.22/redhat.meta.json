@@ -1,0 +1,10 @@
+{
+ "ocp": "4.22",
+ "catalog": "redhat",
+ "label": "Red Hat",
+ "image": "registry.redhat.io/redhat/redhat-operator-index:v4.22",
+ "source": "fbc",
+ "count": 151,
+ "generated": "2026-10-19T07:11:11Z",
+ "bundles": 3488
+}

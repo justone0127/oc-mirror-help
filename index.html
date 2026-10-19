@@ -1,0 +1,1149 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Operator Mirror Picker</title>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f1f3f6; --line: #dfe3e8; --line-2: #c9cfd6;
+  --text: #1c2128; --muted: #5d6773; --faint: #8a939e;
+  --accent: #c9190b; --accent-soft: #fde8e6; --accent-text: #a3150a;
+  --ok: #1e7b34; --ok-soft: #e3f4e6; --warn: #8a5a00; --warn-soft: #fdf1d8; --info: #1f5fa8; --info-soft: #e5eefa;
+  --code-bg: #0f1419; --code-text: #d8dee6;
+  --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.08);
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1216; --panel: #171b21; --panel-2: #1e232a; --line: #2a3038; --line-2: #3a424c;
+    --text: #e6e9ee; --muted: #9aa4b0; --faint: #6c7682;
+    --accent: #ff5a4c; --accent-soft: #3a1917; --accent-text: #ff8a80;
+    --ok: #5cc879; --ok-soft: #15301d; --warn: #e6b450; --warn-soft: #33270f; --info: #74a8ff; --info-soft: #172640;
+    --code-bg: #0a0d10; --code-text: #d8dee6;
+    --shadow: 0 1px 2px rgba(0,0,0,.4);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1216; --panel: #171b21; --panel-2: #1e232a; --line: #2a3038; --line-2: #3a424c;
+  --text: #e6e9ee; --muted: #9aa4b0; --faint: #6c7682;
+  --accent: #ff5a4c; --accent-soft: #3a1917; --accent-text: #ff8a80;
+  --ok: #5cc879; --ok-soft: #15301d; --warn: #e6b450; --warn-soft: #33270f; --info: #74a8ff; --info-soft: #172640;
+  --code-bg: #0a0d10; --code-text: #d8dee6;
+  --shadow: 0 1px 2px rgba(0,0,0,.4);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+code, .mono { font-family: var(--mono); font-size: 12.5px; }
+
+/* ---------- top bar ---------- */
+.top {
+  position: sticky; top: 0; z-index: 20; background: var(--panel); border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 16px; padding: 10px 20px; flex-wrap: wrap;
+}
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 15px; white-space: nowrap; }
+.brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.top .field { display: flex; align-items: center; gap: 8px; }
+.top .field label { color: var(--muted); font-size: 13px; }
+.top .meta { color: var(--faint); font-size: 12px; margin-left: auto; text-align: right; }
+.top .theme-btn { padding: 6px 10px; }
+
+/* ---------- controls ---------- */
+.btn {
+  border: 1px solid var(--line-2); background: var(--panel); border-radius: 6px; padding: 6px 12px; cursor: pointer;
+  white-space: nowrap; line-height: 1.3;
+}
+.btn:hover { background: var(--panel-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { filter: brightness(1.07); }
+.btn.sm { padding: 3px 8px; font-size: 12.5px; }
+.btn.ghost { border-color: transparent; background: transparent; }
+.btn.ghost:hover { background: var(--panel-2); }
+select, input[type=text], input[type=search], textarea {
+  border: 1px solid var(--line-2); background: var(--panel); border-radius: 6px; padding: 6px 9px;
+}
+select:focus, input:focus, textarea:focus, .btn:focus-visible { outline: 2px solid var(--info); outline-offset: 1px; }
+input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; cursor: pointer; }
+
+/* ---------- layout ---------- */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 460px; gap: 16px; padding: 16px 20px 40px; align-items: start; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); }
+.side { position: sticky; top: 70px; max-height: calc(100vh - 86px); display: flex; flex-direction: column; overflow: hidden; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.filters .search { flex: 1 1 260px; min-width: 200px; }
+.filters .search input { width: 100%; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip {
+  border: 1px solid var(--line-2); border-radius: 999px; padding: 4px 11px; cursor: pointer; background: var(--panel);
+  font-size: 13px; display: inline-flex; gap: 6px; align-items: center; user-select: none;
+}
+.chip .n { color: var(--faint); font-size: 12px; }
+.chip.on { background: var(--text); color: var(--panel); border-color: var(--text); }
+.chip.on .n { color: inherit; opacity: .7; }
+.chip.off-data { opacity: .5; cursor: not-allowed; }
+.cat-src { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--faint); }
+.cat-src .src { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.cat-src b { color: var(--muted); font-weight: 600; }
+.cat-src code { font-size: 11.5px; color: var(--muted); }
+.toggles { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 13px; }
+.toggles label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.toolbar { display: flex; gap: 8px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 13px; flex-wrap: wrap; }
+.toolbar .grow { flex: 1; }
+
+/* ---------- table ---------- */
+.tbl-wrap { overflow-x: auto; }
+table.ops { width: 100%; border-collapse: collapse; }
+table.ops th {
+  position: sticky; top: 0; background: var(--panel-2); text-align: left; font-weight: 600; font-size: 12.5px; color: var(--muted);
+  padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; cursor: pointer; user-select: none;
+}
+table.ops th.nosort { cursor: default; }
+table.ops th .arr { color: var(--faint); font-size: 10px; margin-left: 3px; }
+table.ops td { padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.ops tr.row { cursor: pointer; }
+table.ops tr.row:hover td { background: var(--panel-2); }
+table.ops tr.row.sel td { background: var(--accent-soft); }
+table.ops tr.row.sel:hover td { filter: brightness(.98); }
+table.ops td.pk { font-family: var(--mono); font-size: 12.5px; word-break: break-all; }
+table.ops td.dn { color: var(--muted); min-width: 160px; }
+table.ops td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+table.ops td.ck, table.ops th.ck { width: 34px; text-align: center; }
+.tags { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.tag { font-size: 11px; padding: 1px 6px; border-radius: 4px; white-space: nowrap; border: 1px solid transparent; }
+.tag.cat-redhat { background: var(--accent-soft); color: var(--accent-text); }
+.tag.cat-certified { background: var(--info-soft); color: var(--info); }
+.tag.cat-community, .tag.cat-other { background: var(--panel-2); color: var(--muted); border-color: var(--line); }
+.tag.ok { background: var(--ok-soft); color: var(--ok); }
+.tag.warn { background: var(--warn-soft); color: var(--warn); }
+.tag.mut { color: var(--faint); border-color: var(--line); }
+.tag.def { background: var(--text); color: var(--panel); }
+tr.detail td { background: var(--panel-2); padding: 12px 14px 16px 44px; }
+.detail-head { display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+.detail-head .ds { flex: 1 1 100%; color: var(--text); }
+table.chs { border-collapse: collapse; width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+table.chs th, table.chs td { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: left; font-size: 13px; }
+table.chs th { background: var(--panel-2); color: var(--muted); font-weight: 600; font-size: 12px; }
+table.chs td.vers { color: var(--muted); font-family: var(--mono); font-size: 11.5px; max-width: 360px; }
+table.chs select { padding: 2px 4px; font-size: 12px; max-width: 150px; }
+.empty { padding: 40px 20px; text-align: center; color: var(--muted); }
+.more { padding: 12px; text-align: center; }
+
+/* ---------- side panel ---------- */
+.side-head { padding: 12px 14px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; }
+.side-head h2 { font-size: 14px; margin: 0; flex: 1; }
+.side-head .count { background: var(--accent); color: #fff; border-radius: 999px; padding: 0 8px; font-size: 12px; margin-left: 6px; }
+.sel-list { overflow-y: auto; max-height: 30vh; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+.sel-item { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 6px 14px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+.sel-item:last-child { border-bottom: 0; }
+.sel-item .nm { font-family: var(--mono); word-break: break-all; cursor: pointer; }
+.sel-item .nm:hover { text-decoration: underline; }
+.sel-item .sub { color: var(--muted); font-size: 12px; grid-column: 1; }
+.sel-item .x { grid-row: 1 / span 2; grid-column: 2; align-self: center; }
+.sel-item.missing .nm { color: var(--warn); }
+.tabs { display: flex; border-bottom: 1px solid var(--line); padding: 0 8px; flex-shrink: 0; overflow-x: auto; }
+.tab { padding: 9px 10px; border: 0; background: none; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; font-size: 13px; }
+.tab.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+.out-opts { padding: 6px 14px 10px; border-bottom: 1px solid var(--line); font-size: 12.5px; color: var(--muted); flex-shrink: 0; overflow-y: auto; max-height: 40vh; }
+.out-opts .grp { display: flex; gap: 6px 12px; flex-wrap: wrap; align-items: center; padding-top: 6px; }
+.out-opts .grp + .grp { border-top: 1px dashed var(--line); margin-top: 6px; }
+.out-opts .gt { font-weight: 650; color: var(--text); min-width: 100%; display: flex; align-items: center; gap: 8px; }
+.out-opts label { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+.out-opts input[type=text] { width: 110px; padding: 3px 6px; font-size: 12px; }
+.out-opts select { padding: 2px 4px; font-size: 12px; max-width: 220px; }
+.out-opts .path { min-width: 100%; font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+.out-opts .path.warn { color: var(--warn); }
+.out-opts .seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 6px; overflow: hidden; }
+.out-opts .seg label { padding: 2px 9px; gap: 0; }
+.out-opts .seg input { display: none; }
+.out-opts .seg label:has(input:checked) { background: var(--text); color: var(--panel); }
+.file-head { display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 14px; background: var(--panel-2); border-bottom: 1px solid var(--line); position: sticky; top: 0; }
+.file-head .fn { flex: 1; font-family: var(--mono); font-size: 12px; font-weight: 600; }
+.out-body pre + .file-head { border-top: 1px solid var(--line); }
+.out-body { flex: 1; min-height: 160px; overflow: auto; background: var(--code-bg); }
+.out-body pre { margin: 0; padding: 12px 14px; color: var(--code-text); font: 12px/1.5 var(--mono); white-space: pre; }
+.out-body table.cmp { border-collapse: collapse; width: 100%; background: var(--panel); font-size: 12px; }
+.out-body table.cmp th, .out-body table.cmp td { border-bottom: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+.out-body table.cmp th { background: var(--panel-2); position: sticky; top: 0; color: var(--muted); }
+.out-body table.cmp td.cur { background: var(--accent-soft); }
+.out-body table.cmp .no { color: var(--faint); }
+.out-foot { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--line); flex-shrink: 0; align-items: center; }
+.out-foot .hint { color: var(--faint); font-size: 12px; flex: 1; }
+
+/* ---------- dialogs / toast ---------- */
+dialog { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--text); padding: 0; width: min(640px, calc(100vw - 32px)); box-shadow: 0 20px 50px rgba(0,0,0,.25); }
+dialog::backdrop { background: rgba(10,14,20,.45); }
+dialog .dh { padding: 14px 18px; border-bottom: 1px solid var(--line); font-weight: 650; }
+dialog .db { padding: 14px 18px; display: grid; gap: 10px; }
+dialog .df { padding: 12px 18px; border-top: 1px solid var(--line); display: flex; gap: 8px; justify-content: flex-end; }
+dialog textarea { width: 100%; min-height: 200px; font-family: var(--mono); font-size: 12.5px; }
+dialog .note { color: var(--muted); font-size: 12.5px; }
+dialog .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.result { font-size: 12.5px; white-space: pre-wrap; color: var(--muted); max-height: 160px; overflow: auto; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(20px); opacity: 0; background: var(--text); color: var(--panel); padding: 9px 16px; border-radius: 8px; transition: .2s; pointer-events: none; z-index: 100; font-size: 13px; }
+.toast.on { opacity: 1; transform: translateX(-50%); }
+
+.nodata { max-width: 720px; margin: 60px auto; padding: 28px; }
+.nodata h2 { margin-top: 0; }
+.nodata pre { background: var(--code-bg); color: var(--code-text); padding: 12px; border-radius: 8px; overflow: auto; font-size: 12px; }
+
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .side { position: static; max-height: none; }
+  .out-body { max-height: 60vh; }
+}
+@media (max-width: 640px) {
+  .top { padding: 10px 16px; gap: 10px; }
+  .top .meta { margin-left: 0; text-align: left; width: 100%; }
+  .layout { padding: 12px 16px 32px; }
+  table.ops td.dn, table.ops th.dn, table.ops td.chn, table.ops th.chn { display: none; }
+  tr.detail td { padding-left: 14px; }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><span class="dot"></span>Operator Mirror Picker</div>
+  <div class="field">
+    <label for="ocpSel">OCP 버전</label>
+    <select id="ocpSel"></select>
+  </div>
+  <button class="btn sm" id="importBtn" title="엑셀 등에서 복사한 오퍼레이터 이름 목록으로 한꺼번에 선택">목록 붙여넣기</button>
+  <button class="btn sm" id="outBtn" title="oc-mirror list operators 결과 파일(.out)을 직접 불러오기">.out 불러오기</button>
+  <div class="meta" id="meta"></div>
+  <button class="btn sm ghost theme-btn" id="themeBtn" title="테마 전환">◐</button>
+</header>
+
+<main id="app" class="layout" hidden>
+  <section class="card">
+    <div class="filters">
+      <div class="search"><input type="search" id="q" placeholder="이름, 표시 이름, 제공자, 카테고리 검색  ( / )" autocomplete="off"></div>
+      <div class="chips" id="catChips"></div>
+      <div class="cat-src" id="catSrc"></div>
+    </div>
+    <div class="toolbar">
+      <div class="toggles">
+        <label><input type="checkbox" id="fDisc"> Disconnected 지원만</label>
+        <label><input type="checkbox" id="fDep" checked> Deprecated 숨기기</label>
+        <label><input type="checkbox" id="fSel"> 선택한 것만</label>
+      </div>
+      <span class="grow"></span>
+      <span id="shown"></span>
+    </div>
+    <div class="tbl-wrap">
+      <table class="ops">
+        <thead><tr>
+          <th class="ck nosort"><input type="checkbox" id="ckAll" title="보이는 항목 모두 선택/해제"></th>
+          <th data-sort="n">Package<span class="arr"></span></th>
+          <th data-sort="d" class="dn">Display name<span class="arr"></span></th>
+          <th data-sort="dc">Default channel<span class="arr"></span></th>
+          <th data-sort="h">Head<span class="arr"></span></th>
+          <th data-sort="chn" class="chn">채널<span class="arr"></span></th>
+          <th class="nosort">정보</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="more" id="more" hidden><button class="btn sm" id="moreBtn">더 보기</button></div>
+  </section>
+
+  <aside class="card side">
+    <div class="side-head">
+      <h2>선택한 Operator<span class="count" id="selCount">0</span></h2>
+      <button class="btn sm ghost" id="shareBtn" title="현재 선택을 URL로 복사">링크</button>
+      <button class="btn sm ghost" id="clearBtn">비우기</button>
+    </div>
+    <div class="sel-list" id="selList"></div>
+    <div class="tabs" id="tabs">
+      <button class="tab on" data-tab="isc">ImageSetConfiguration</button>
+      <button class="tab" data-tab="tsv">엑셀(TSV)</button>
+      <button class="tab" data-tab="names">이름 목록</button>
+      <button class="tab" data-tab="cmd">명령어</button>
+      <button class="tab" data-tab="cmp">버전 비교</button>
+    </div>
+    <div class="out-opts" id="outOpts"></div>
+    <div class="out-body" id="outBody"></div>
+    <div class="out-foot">
+      <span class="hint" id="outHint"></span>
+      <button class="btn sm" id="dlBtn">다운로드</button>
+      <button class="btn sm primary" id="copyBtn">복사</button>
+    </div>
+  </aside>
+</main>
+
+<div id="nodata" class="card nodata" hidden>
+  <h2>카탈로그 데이터가 없습니다</h2>
+  <p>인터넷이 되는 서버에서 아래 스크립트로 데이터를 생성한 뒤 이 페이지를 다시 여세요.</p>
+  <pre>./collect.sh 4.22            # Red Hat / Certified / Community 카탈로그 수집
+./collect.sh 4.20 4.21 4.22  # 여러 버전</pre>
+  <p>또는 기존 방식으로 뽑은 <code>oc-mirror --v2 list operators</code> 결과 파일을 바로 불러올 수 있습니다.</p>
+  <button class="btn primary" id="outBtn2">.out 파일 불러오기</button>
+</div>
+
+<dialog id="importDlg">
+  <div class="dh">오퍼레이터 목록으로 한꺼번에 선택</div>
+  <div class="db">
+    <div class="note">엑셀 열, 줄바꿈·쉼표·공백 구분 목록 모두 가능합니다. 각 줄의 단어 중 현재 OCP 버전 카탈로그에 있는 패키지 이름을 찾아 선택합니다.
+      <code>패키지명 채널</code> 형식(예: <code>odf-operator stable-4.22</code>)이면 채널도 함께 지정합니다.</div>
+    <textarea id="importTxt" placeholder="odf-operator&#10;local-storage-operator&#10;advanced-cluster-management  release-2.17&#10;..."></textarea>
+    <div class="row note">
+      <label><input type="checkbox" id="importReplace"> 기존 선택 비우고 새로 선택</label>
+    </div>
+    <div class="result" id="importResult"></div>
+  </div>
+  <div class="df">
+    <button class="btn" data-close>닫기</button>
+    <button class="btn primary" id="importGo">선택</button>
+  </div>
+</dialog>
+
+<dialog id="outDlg">
+  <div class="dh">oc-mirror list 결과(.out) 불러오기</div>
+  <div class="db">
+    <div class="note">
+      <code>oc-mirror --v2 list operators --catalog=...:v4.22 &gt; package.out</code> 결과를 그대로 불러옵니다.
+      이 방식은 패키지 이름·표시 이름·기본 채널만 포함합니다(채널 목록·버전은 <code>collect.sh</code> 로 수집한 데이터에만 있음).
+      브라우저에만 임시로 로드되며, 영구 반영하려면 <code>build_data.py out ...</code> 을 사용하세요.
+    </div>
+    <div class="row">
+      <label>OCP 버전 <input type="text" id="outVer" value="4.22" style="width:80px"></label>
+      <label>카탈로그
+        <select id="outCat">
+          <option value="redhat">redhat-operator-index</option>
+          <option value="certified">certified-operator-index</option>
+          <option value="community">community-operator-index</option>
+          <option value="marketplace">redhat-marketplace-index</option>
+          <option value="custom">직접 입력…</option>
+        </select>
+      </label>
+    </div>
+    <label class="row">카탈로그 이미지 <input type="text" id="outImg" style="flex:1;min-width:260px" placeholder="registry.redhat.io/redhat/redhat-operator-index:v4.22"></label>
+    <input type="file" id="outFile" accept=".out,.txt,.log,text/plain">
+    <div class="result" id="outResult"></div>
+  </div>
+  <div class="df">
+    <button class="btn" data-close>닫기</button>
+    <button class="btn primary" id="outGo">불러오기</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script src="data/index.js"></script>
+<script>
+(() => {
+'use strict';
+
+// ===================================================================== data
+const CAT_ORDER = ['redhat', 'certified', 'community', 'marketplace'];
+const CAT_LABEL = { redhat: 'Red Hat', certified: 'Certified', community: 'Community', marketplace: 'Marketplace' };
+const CAT_IMAGE = c => `registry.redhat.io/redhat/${c === 'marketplace' ? 'redhat-marketplace-index' : c + '-operator-index'}`;
+const catRank = c => { const i = CAT_ORDER.indexOf(c); return i < 0 ? 99 : i; };
+const catCmp = (a, b) => catRank(a) - catRank(b) || a.localeCompare(b);
+// 카탈로그 표시 이름: 데이터의 label 우선 (사용자 지정 카탈로그 지원)
+function catLabel(c, ocp) {
+  const d = STORE[`${ocp || state.ocp}|${c}`] || Object.values(STORE).find(v => v && v.meta.catalog === c);
+  if (d && d.meta.label) return d.meta.label;
+  const m = INDEX.find(m => m.catalog === c);
+  return (m && m.label) || CAT_LABEL[c] || c;
+}
+// 이미지 주소 → 카탈로그 키 (collect.sh 와 같은 규칙)
+function catKeyFromImage(img) {
+  let k = img.split('/').pop().split(/[:@]/)[0].replace(/-operator-index$/, '').replace(/-index$/, '');
+  return k === 'redhat-marketplace' ? 'marketplace' : k;
+}
+
+const INDEX = (window.OCM_INDEX || []).slice();       // [{ocp, catalog, image, ...}]
+const STORE = {};                                     // `${ocp}|${cat}` -> {meta, packages, byName}
+const pending = {};
+
+window.OCM = {
+  load(d) {
+    const k = `${d.meta.ocp}|${d.meta.catalog}`;
+    const byName = new Map(d.packages.map(p => [p.n, p]));
+    STORE[k] = { meta: d.meta, packages: d.packages, byName };
+    if (pending[k]) { pending[k].forEach(f => f()); delete pending[k]; }
+  }
+};
+
+function loadCatalog(ocp, cat) {
+  const k = `${ocp}|${cat}`;
+  if (STORE[k]) return Promise.resolve(STORE[k]);
+  if (!INDEX.some(m => m.ocp === ocp && m.catalog === cat)) return Promise.resolve(null);
+  return new Promise(res => {
+    if (pending[k]) { pending[k].push(() => res(STORE[k])); return; }
+    pending[k] = [() => res(STORE[k])];
+    const s = document.createElement('script');
+    s.src = `data/${ocp}/${cat}.js`;
+    s.onerror = () => { const cbs = pending[k] || []; delete pending[k]; STORE[k] = null; cbs.forEach(f => f()); };
+    document.head.appendChild(s);
+  });
+}
+const loadVersion = ocp => Promise.all([...catsFor(ocp).map(c => loadCatalog(ocp, c)), loadReleases(ocp)]);
+
+// OCP 릴리스 (채널별 버전 + 업그레이드 edge)
+const RELS = {};
+window.OCM.loadReleases = d => { RELS[d.ocp] = d; };
+function loadReleases(ocp) {
+  if (RELS[ocp] !== undefined || !(window.OCM_RELEASES || []).includes(ocp)) return Promise.resolve(RELS[ocp] || null);
+  return new Promise(res => {
+    const s = document.createElement('script');
+    s.src = `data/${ocp}/releases.js`;
+    s.onload = () => res(RELS[ocp] || null);
+    s.onerror = () => { RELS[ocp] = null; res(null); };
+    document.head.appendChild(s);
+  });
+}
+
+function versions() {
+  const s = new Set(INDEX.map(m => m.ocp));
+  Object.values(STORE).forEach(v => v && s.add(v.meta.ocp));
+  return [...s].sort(vcmp).reverse();
+}
+function catsFor(ocp) {
+  const s = new Set(INDEX.filter(m => m.ocp === ocp).map(m => m.catalog));
+  Object.values(STORE).forEach(v => v && v.meta.ocp === ocp && s.add(v.meta.catalog));
+  return [...s].sort(catCmp);
+}
+const catData = (ocp, c) => STORE[`${ocp}|${c}`] || null;
+
+// semver-ish compare
+function vparts(v) {
+  v = String(v || '').replace(/^v/, '');
+  const [main, ...rest] = v.split('-'); const pre = rest.join('-');
+  return { nums: main.split('+')[0].split('.').map(x => { const m = /^(\d+)(.*)$/.exec(x); return m ? [+m[1], m[2]] : [-1, x]; }), pre };
+}
+function vcmp(a, b) {
+  const A = vparts(a), B = vparts(b);
+  for (let i = 0; i < Math.max(A.nums.length, B.nums.length); i++) {
+    const x = A.nums[i] || [0, ''], y = B.nums[i] || [0, ''];
+    if (x[0] !== y[0]) return x[0] - y[0];
+    if (x[1] !== y[1]) return x[1] < y[1] ? -1 : 1;
+  }
+  if (A.pre === B.pre) return 0;
+  if (!A.pre) return 1; if (!B.pre) return -1;
+  return A.pre.localeCompare(B.pre, undefined, { numeric: true });
+}
+
+// ===================================================================== state
+const LS_KEY = 'ocm-picker-v1';
+const state = {
+  ocp: null,
+  cats: null,               // Set of enabled catalogs (null = all)
+  q: '', fDisc: false, fDep: true, fSel: false,
+  sort: { k: 'n', dir: 1 },
+  open: new Set(),          // expanded rows (key)
+  sel: {},                  // key "cat/pkg" -> { ch: { [channel]: {min,max} } | null }
+  tab: 'isc',
+  opt: { rel: true, relCh: 'stable', relMin: '', relMax: '', shortest: true, graph: true, arch: 'amd64', kubevirt: false, split: false, explicitCh: true, addImg: '' },
+  limit: 300,
+};
+function save() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify({ ocp: state.ocp, sel: state.sel, opt: state.opt, tab: state.tab, fDisc: state.fDisc, fDep: state.fDep, cats: state.cats ? [...state.cats] : null })); } catch (e) {}
+}
+function restore() {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch (e) {}
+  const h = location.hash.match(/#s=([^&]+)/);
+  if (h) { try { const x = JSON.parse(decodeURIComponent(escape(atob(h[1])))); s = Object.assign(s || {}, x); } catch (e) {} }
+  if (!s) return;
+  if (s.ocp) state.ocp = s.ocp;
+  if (s.sel) state.sel = s.sel;
+  if (s.opt) Object.assign(state.opt, s.opt);
+  if (s.tab) state.tab = s.tab;
+  if (typeof s.fDisc === 'boolean') state.fDisc = s.fDisc;
+  if (typeof s.fDep === 'boolean') state.fDep = s.fDep;
+  if (s.cats) state.cats = new Set(s.cats);
+}
+
+// ===================================================================== helpers
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const keyOf = (cat, n) => `${cat}/${n}`;
+const splitKey = k => { const i = k.indexOf('/'); return [k.slice(0, i), k.slice(i + 1)]; };
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), 1800); }
+function headOf(p, ch) { const c = (p.ch || []).find(c => c.n === (ch || p.dc)); return c ? c.h : null; }
+function catalogImage(cat) {
+  const d = catData(state.ocp, cat);
+  return (d && d.meta.image) || `${CAT_IMAGE(cat)}:v${state.ocp}`;
+}
+function pkgOf(key) { const [c, n] = splitKey(key); const d = catData(state.ocp, c); return d ? d.byName.get(n) : null; }
+function selChannels(key) {
+  const s = state.sel[key], p = pkgOf(key);
+  if (s && s.ch && Object.keys(s.ch).length) return s.ch;
+  return p && p.dc ? { [p.dc]: {} } : {};
+}
+function yq(v) { // YAML scalar: 숫자로 해석될 수 있는 값은 따옴표
+  v = String(v);
+  return /^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(v) || /^(true|false|yes|no|on|off|null|~)$/i.test(v) || /[:#{}\[\],&*!|>'"%@`]/.test(v) ? `'${v.replace(/'/g, "''")}'` : v;
+}
+
+// ===================================================================== rendering: top
+function renderVersions() {
+  const vs = versions();
+  if (!vs.includes(state.ocp)) state.ocp = vs[0] || null;
+  $('#ocpSel').innerHTML = vs.map(v => `<option value="${esc(v)}"${v === state.ocp ? ' selected' : ''}>${esc(v)}</option>`).join('');
+}
+function renderMeta() {
+  const ms = catsFor(state.ocp).map(c => catData(state.ocp, c)).filter(Boolean).map(d => d.meta);
+  if (!ms.length) { $('#meta').textContent = ''; return; }
+  const dates = ms.map(m => (m.created || m.generated || '').slice(0, 10)).filter(Boolean).sort();
+  const src = ms.some(m => m.source === 'oc-mirror-list') ? ' · 일부 .out 기반(채널 상세 없음)' : '';
+  $('#meta').innerHTML = `카탈로그 기준일 ${esc(dates[0] || '-')}${dates.length && dates[0] !== dates[dates.length - 1] ? ' ~ ' + esc(dates[dates.length - 1]) : ''}${esc(src)}`;
+}
+function renderChips() {
+  const cats = catsFor(state.ocp);
+  $('#catChips').innerHTML = cats.map(c => {
+    const d = catData(state.ocp, c);
+    const on = !state.cats || state.cats.has(c);
+    return `<span class="chip${on ? ' on' : ''}" data-cat="${esc(c)}" title="${esc(catalogImage(c))}">${esc(catLabel(c))}<span class="n">${d ? d.packages.length : '…'}</span></span>`;
+  }).join('');
+  // 표시 중인 카탈로그 소스 이미지
+  $('#catSrc').innerHTML = cats.filter(c => !state.cats || state.cats.has(c)).map(c => {
+    const d = catData(state.ocp, c), m = d ? d.meta : {};
+    const when = (m.created || m.generated || '').slice(0, 10);
+    return `<span class="src"><b>${esc(catLabel(c))}</b> <code>${esc(catalogImage(c))}</code>${when ? ` <span title="${esc(m.digest || '')}">· ${esc(when)}</span>` : ''}${m.source === 'oc-mirror-list' ? ' · .out' : ''}</span>`;
+  }).join('');
+}
+
+// ===================================================================== rendering: table
+function rowsFiltered() {
+  const cats = catsFor(state.ocp).filter(c => !state.cats || state.cats.has(c));
+  const q = state.q.trim().toLowerCase();
+  const terms = q ? q.split(/\s+/) : [];
+  const rows = [];
+  for (const c of cats) {
+    const d = catData(state.ocp, c); if (!d) continue;
+    for (const p of d.packages) {
+      const k = keyOf(c, p.n), sel = !!state.sel[k];
+      if (state.fSel && !sel) continue;
+      if (!sel) {
+        if (state.fDisc && !p.disc) continue;
+        if (state.fDep && p.dep) continue;
+      }
+      if (terms.length) {
+        const hay = (p.n + ' ' + (p.d || '') + ' ' + (p.p || '') + ' ' + (p.cat || []).join(' ') + ' ' + (p.ds || '')).toLowerCase();
+        if (!terms.every(t => hay.includes(t))) continue;
+      }
+      rows.push({ c, p, k, sel });
+    }
+  }
+  const { k: sk, dir } = state.sort;
+  const val = r => sk === 'h' ? headOf(r.p) || '' : sk === 'chn' ? (r.p.ch || []).length : (r.p[sk] || '').toLowerCase();
+  rows.sort((a, b) => {
+    // 검색어와 이름이 정확히/앞부분 일치하면 위로
+    if (terms.length) {
+      const sa = a.p.n === q ? 2 : a.p.n.startsWith(terms[0]) ? 1 : 0, sb = b.p.n === q ? 2 : b.p.n.startsWith(terms[0]) ? 1 : 0;
+      if (sa !== sb) return sb - sa;
+    }
+    const x = val(a), y = val(b);
+    const r = sk === 'h' ? vcmp(x, y) : sk === 'chn' ? x - y : x < y ? -1 : x > y ? 1 : 0;
+    return r * dir || a.p.n.localeCompare(b.p.n);
+  });
+  return rows;
+}
+
+function infoTags(p) {
+  const t = [];
+  if (p.dep) t.push(`<span class="tag warn" title="${esc(p.dep)}">Deprecated</span>`);
+  if (p.disc === true) t.push('<span class="tag ok" title="features.operators.openshift.io/disconnected=true">Disconnected</span>');
+  else if (p.disc === false) t.push('<span class="tag mut" title="Disconnected 미지원으로 표시됨">No disconn.</span>');
+  if (p.fips) t.push('<span class="tag mut">FIPS</span>');
+  if (p.max) t.push(`<span class="tag mut" title="olm.maxOpenShiftVersion">max ${esc(p.max)}</span>`);
+  return t.join('');
+}
+
+function renderTable() {
+  const rows = rowsFiltered();
+  const multiCat = catsFor(state.ocp).length > 1;
+  const shown = rows.slice(0, state.limit);
+  $('#shown').textContent = `${rows.length.toLocaleString()}개 표시`;
+  $('#more').hidden = rows.length <= state.limit;
+  $('#moreBtn').textContent = `더 보기 (${(rows.length - state.limit).toLocaleString()}개 남음)`;
+  const ckAll = $('#ckAll');
+  const nSel = rows.filter(r => r.sel).length;
+  ckAll.checked = rows.length > 0 && nSel === rows.length;
+  ckAll.indeterminate = nSel > 0 && nSel < rows.length;
+
+  if (!rows.length) {
+    $('#tbody').innerHTML = `<tr><td colspan="7" class="empty">조건에 맞는 오퍼레이터가 없습니다.</td></tr>`;
+    return;
+  }
+  const html = [];
+  for (const { c, p, k, sel } of shown) {
+    const chosen = sel ? Object.keys(selChannels(k)) : [];
+    const chNote = sel && chosen.length && !(chosen.length === 1 && chosen[0] === p.dc) ? `<div class="tags" style="margin-top:3px"><span class="tag def">→ ${esc(chosen.join(', '))}</span></div>` : '';
+    html.push(`<tr class="row${sel ? ' sel' : ''}" data-k="${esc(k)}">
+      <td class="ck"><input type="checkbox" data-ck="${esc(k)}"${sel ? ' checked' : ''} aria-label="${esc(p.n)} 선택"></td>
+      <td class="pk">${esc(p.n)}${multiCat ? ` <span class="tag cat-${CAT_LABEL[c] ? c : 'other'}">${esc(catLabel(c))}</span>` : ''}</td>
+      <td class="dn">${esc(p.d)}${p.p ? `<div style="color:var(--faint);font-size:12px">${esc(p.p)}</div>` : ''}</td>
+      <td class="mono">${esc(p.dc)}${chNote}</td>
+      <td class="mono">${esc(headOf(p) || '-')}</td>
+      <td class="num chn">${(p.ch || []).length || '-'}</td>
+      <td><span class="tags">${infoTags(p)}</span></td>
+    </tr>`);
+    if (state.open.has(k)) html.push(detailRow(c, p, k));
+  }
+  $('#tbody').innerHTML = html.join('');
+  document.querySelectorAll('th[data-sort]').forEach(th => {
+    th.querySelector('.arr').textContent = th.dataset.sort === state.sort.k ? (state.sort.dir > 0 ? '▲' : '▼') : '';
+  });
+}
+
+function detailRow(c, p, k) {
+  const sel = state.sel[k];
+  const chosen = selChannels(k);
+  const hasVers = (p.ch || []).some(ch => ch.v && ch.v.length);
+  const chRows = (p.ch || []).slice().sort((a, b) => (b.n === p.dc) - (a.n === p.dc) || vcmp(b.n.replace(/^\D*/, ''), a.n.replace(/^\D*/, ''))).map(ch => {
+    const on = !!chosen[ch.n];
+    const cfg = chosen[ch.n] || {};
+    const opts = (cur) => `<option value="">-</option>` + (ch.v || []).slice().reverse().map(v => `<option${v === cur ? ' selected' : ''}>${esc(v)}</option>`).join('');
+    const vlist = (ch.v || []).length > 8 ? `${(ch.v || []).slice(-8).join(', ')} … (총 ${ch.v.length})` : (ch.v || []).join(', ');
+    return `<tr>
+      <td><input type="checkbox" data-chk="${esc(k)}" data-ch="${esc(ch.n)}"${on && sel ? ' checked' : ''}${!sel ? ' disabled title="먼저 오퍼레이터를 선택하세요"' : ''}></td>
+      <td class="mono">${esc(ch.n)} ${ch.n === p.dc ? '<span class="tag def">default</span>' : ''}${ch.dep ? ` <span class="tag warn" title="${esc(ch.dep)}">deprecated</span>` : ''}</td>
+      <td class="mono">${esc(ch.h || '-')}</td>
+      ${hasVers ? `<td><select data-min="${esc(k)}" data-ch="${esc(ch.n)}"${on && sel ? '' : ' disabled'}>${opts(cfg.min)}</select></td>
+      <td><select data-max="${esc(k)}" data-ch="${esc(ch.n)}"${on && sel ? '' : ' disabled'}>${opts(cfg.max)}</select></td>
+      <td class="vers">${esc(vlist)}</td>` : ''}
+    </tr>`;
+  }).join('');
+  const head = [
+    p.ds ? `<span class="ds">${esc(p.ds)}</span>` : '',
+    p.cat ? `<span>카테고리: ${esc(p.cat.join(', '))}</span>` : '',
+    p.img ? `<span>Head 번들 관련 이미지 ${p.img}개</span>` : '',
+    `<span class="mono">${esc(catalogImage(c))}</span>`,
+  ].join('');
+  return `<tr class="detail"><td colspan="7">
+    <div class="detail-head">${head}</div>
+    ${p.dep ? `<div class="tag warn" style="display:block;margin-bottom:8px;padding:6px 8px;white-space:pre-wrap">${esc(p.dep)}</div>` : ''}
+    <table class="chs"><thead><tr><th style="width:30px">미러</th><th>Channel</th><th>Head</th>${hasVers ? '<th>minVersion</th><th>maxVersion</th><th>버전</th>' : ''}</tr></thead>
+    <tbody>${chRows || '<tr><td colspan="6" class="note">채널 정보 없음</td></tr>'}</tbody></table>
+    ${!hasVers ? '<div class="note" style="margin-top:6px;color:var(--faint);font-size:12px">이 카탈로그는 .out 파일 기반이라 채널/버전 상세가 없습니다.</div>' : ''}
+    <div style="margin-top:6px;color:var(--faint);font-size:12px">min/max 를 지정하지 않으면 oc-mirror v2 는 각 채널의 head 번들만 미러링합니다.</div>
+  </td></tr>`;
+}
+
+// ===================================================================== rendering: side
+function selKeys() {
+  return Object.keys(state.sel).sort((a, b) => {
+    const [ca, na] = splitKey(a), [cb, nb] = splitKey(b);
+    return catCmp(ca, cb) || na.localeCompare(nb);
+  });
+}
+function renderSide() {
+  const keys = selKeys();
+  $('#selCount').textContent = keys.length;
+  $('#selList').innerHTML = keys.length ? keys.map(k => {
+    const [c, n] = splitKey(k); const p = pkgOf(k);
+    const chs = p ? Object.entries(selChannels(k)).map(([ch, cfg]) => ch + (cfg.min || cfg.max ? ` (${cfg.min || '…'} ~ ${cfg.max || 'head'})` : '')).join(', ') : `OCP ${state.ocp} 카탈로그에 없음`;
+    return `<div class="sel-item${p ? '' : ' missing'}"><span class="nm" data-goto="${esc(k)}">${esc(n)}</span>
+      <button class="btn sm ghost x" data-rm="${esc(k)}" title="제거" aria-label="${esc(n)} 제거">✕</button>
+      <span class="sub">${esc(catLabel(c))} · ${esc(chs)}</span></div>`;
+  }).join('') : `<div class="empty" style="padding:18px">왼쪽 표에서 오퍼레이터를 선택하세요.</div>`;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === state.tab));
+  renderOutput();
+}
+
+// ---------- OCP 릴리스 선택
+function relChannel() {
+  const R = RELS[state.ocp];
+  if (!R) return null;
+  const t = R.channels[state.opt.relCh] ? state.opt.relCh : Object.keys(R.channels)[0];
+  return { type: t, name: `${t}-${state.ocp}`, ...R.channels[t] };
+}
+// 현재 마이너(4.22.x)의 릴리스, 최신순
+function relTargets(ch) { return ch.v.filter(v => v.startsWith(state.ocp + '.')).slice().reverse(); }
+function relResolved() {
+  const o = state.opt, ch = relChannel();
+  if (!ch) return { ch: null, name: `${o.relCh || 'stable'}-${state.ocp}`, min: o.relMin, max: o.relMax };
+  const tg = relTargets(ch);
+  const max = tg.includes(o.relMax) ? o.relMax : tg[0] || '';
+  const min = o.relMin && ch.v.includes(o.relMin) && vcmp(o.relMin, max) < 0 ? o.relMin : max;
+  return { ch, name: ch.name, min, max };
+}
+// 업그레이드 경로 (BFS: 조건 없는 edge 우선, 없으면 조건부 edge 포함)
+function upgradePath(ch, from, to) {
+  const idx = new Map(ch.v.map((v, i) => [v, i]));
+  const a = idx.get(from), b = idx.get(to);
+  if (a === undefined || b === undefined) return null;
+  const run = (edges) => {
+    const adj = new Map();
+    edges.forEach(([x, y]) => { if (!adj.has(x)) adj.set(x, []); adj.get(x).push(y); });
+    const prev = new Map([[a, -1]]), q = [a];
+    while (q.length) {
+      const x = q.shift(); if (x === b) break;
+      for (const y of adj.get(x) || []) if (!prev.has(y)) { prev.set(y, x); q.push(y); }
+    }
+    if (!prev.has(b)) return null;
+    const path = []; for (let x = b; x !== -1; x = prev.get(x)) path.unshift(ch.v[x]);
+    return path;
+  };
+  const p = run(ch.e); if (p) return { path: p, cond: false };
+  const p2 = run(ch.e.concat(ch.c || [])); return p2 ? { path: p2, cond: true } : null;
+}
+
+function renderOutOpts() {
+  const o = state.opt, el = $('#outOpts');
+  if (state.tab !== 'isc') { el.innerHTML = ''; el.hidden = true; return; }
+  el.hidden = false;
+  const ck = (k, label, title) => `<label${title ? ` title="${esc(title)}"` : ''}><input type="checkbox" data-opt="${k}"${o[k] ? ' checked' : ''}> ${label}</label>`;
+  const G = [];
+  // OpenShift 릴리스
+  let rel = `<div class="grp"><div class="gt">${ck('rel', `OpenShift ${esc(state.ocp)} 릴리스 포함`)}</div>`;
+  if (o.rel) {
+    const r = relResolved(), ch = r.ch;
+    if (ch) {
+      const R = RELS[state.ocp];
+      rel += `<label>채널 <select data-opt="relCh">${Object.keys(R.channels).map(t => `<option value="${t}"${t === ch.type ? ' selected' : ''}>${t}-${esc(state.ocp)}</option>`).join('')}</select></label>`;
+      const tg = relTargets(ch);
+      rel += `<label>대상 버전 <select data-opt="relMax">${tg.map((v, i) => `<option value="${esc(v)}"${v === r.max ? ' selected' : ''}>${esc(v)}${i === 0 ? ' (최신)' : ''}</option>`).join('')}</select></label>`;
+      // 시작 버전: 대상보다 낮은 모든 버전 (이전 마이너 포함), 마이너별 그룹
+      const lower = ch.v.filter(v => vcmp(v, r.max) < 0 && !/-(rc|ec|fc)\./.test(v)).reverse();
+      const groups = {};
+      lower.forEach(v => { const m = v.split('.').slice(0, 2).join('.'); (groups[m] = groups[m] || []).push(v); });
+      rel += `<label title="클러스터를 업그레이드할 경우 현재 버전. 지정하면 그 버전부터 대상 버전까지의 릴리스를 미러링합니다.">시작 버전 <select data-opt="relMin"><option value="">대상 버전만 (신규 설치)</option>${
+        Object.entries(groups).map(([m, vs]) => `<optgroup label="${esc(m)}">${vs.map(v => `<option${v === r.min ? ' selected' : ''}>${esc(v)}</option>`).join('')}</optgroup>`).join('')}</select></label>`;
+      if (r.min !== r.max) {
+        rel += ck('shortest', 'shortestPath', '시작~대상 사이 모든 릴리스 대신 최단 업그레이드 경로의 릴리스만 미러링');
+        const up = upgradePath(ch, r.min, r.max);
+        rel += up ? `<div class="path${up.cond ? ' warn' : ''}">업그레이드 경로 (${up.path.length - 1}단계${up.cond ? ', 조건부 업그레이드 포함 - 릴리스 노트의 알려진 이슈 확인' : ''}): ${up.path.map(esc).join(' → ')}</div>`
+                  : `<div class="path warn">${esc(r.min)} → ${esc(r.max)} 업그레이드 경로가 ${esc(ch.name)} 그래프에 없습니다.</div>`;
+      }
+    } else {
+      rel += `<label>채널 <select data-opt="relCh">${['stable', 'fast', 'eus', 'candidate'].map(t => `<option value="${t}"${t === o.relCh ? ' selected' : ''}>${t}-${esc(state.ocp)}</option>`).join('')}</select></label>`;
+      rel += `<label>minVersion <input type="text" data-opt="relMin" value="${esc(o.relMin)}" placeholder="${esc(state.ocp)}.0"></label>`;
+      rel += `<label>maxVersion <input type="text" data-opt="relMax" value="${esc(o.relMax)}" placeholder="${esc(state.ocp)}.x"></label>`;
+      rel += `<div class="path">릴리스 목록 데이터 없음 — <code>./collect.sh --releases-only ${esc(state.ocp)}</code> 로 수집하면 버전을 목록에서 고를 수 있습니다.</div>`;
+    }
+    rel += `<label>아키텍처 <select data-opt="arch">${['amd64', 'arm64', 'ppc64le', 's390x', 'multi'].map(a => `<option${a === o.arch ? ' selected' : ''}>${a}</option>`).join('')}</select></label>`;
+    rel += ck('graph', 'graph', 'OpenShift Update Service(OSUS)용 graph-data 이미지 포함');
+    rel += ck('kubevirt', 'kubeVirtContainer', 'HyperShift KubeVirt(OpenShift Virtualization 기반 Hosted Control Plane)용 이미지 포함');
+  }
+  G.push(rel + '</div>');
+  // Operators / 출력
+  G.push(`<div class="grp"><div class="gt">Operator · 출력</div>
+    ${ck('explicitCh', '기본 채널도 명시')}
+    <span class="seg"><label><input type="radio" name="split" data-opt="split" value=""${o.split ? '' : ' checked'}>파일 하나</label><label><input type="radio" name="split" data-opt="split" value="1"${o.split ? ' checked' : ''}>OCP / Operator 분리</label></span>
+    <label style="min-width:100%">additionalImages <input type="text" data-opt="addImg" value="${esc(o.addImg)}" placeholder="쉼표로 구분 (예: registry.redhat.io/ubi9/ubi:latest)" style="flex:1;width:auto"></label>
+  </div>`);
+  el.innerHTML = G.join('');
+}
+
+function iscHeader(what) {
+  const r = state.opt.rel ? relResolved() : null;
+  return [`# ${what} - OCP ${state.ocp}${r ? ` (${r.name}${r.max ? ', ' + (r.min && r.min !== r.max ? r.min + ' → ' : '') + r.max : ''})` : ''}`,
+    `# generated by Operator Mirror Picker ${new Date().toISOString().slice(0, 10)}`,
+    'kind: ImageSetConfiguration', 'apiVersion: mirror.openshift.io/v2alpha1', 'mirror:'];
+}
+function platformLines() {
+  const o = state.opt, r = relResolved(), L = ['  platform:'];
+  L.push('    architectures:', `    - ${o.arch || 'amd64'}`);
+  L.push('    channels:', `    - name: ${yq(r.name)}`, '      type: ocp');
+  if (r.min) L.push(`      minVersion: ${yq(r.min)}`);
+  if (r.max) L.push(`      maxVersion: ${yq(r.max)}`);
+  if (r.min && r.max && r.min !== r.max && o.shortest) L.push('      shortestPath: true');
+  if (o.graph) L.push('    graph: true');
+  if (o.kubevirt) L.push('    kubeVirtContainer: true');
+  return L;
+}
+function operatorLines() {
+  const o = state.opt, keys = selKeys().filter(k => pkgOf(k)), L = [];
+  const byCat = {};
+  keys.forEach(k => { const [c] = splitKey(k); (byCat[c] = byCat[c] || []).push(k); });
+  const cats = Object.keys(byCat).sort(catCmp);
+  if (cats.length) L.push('  operators:');
+  for (const c of cats) {
+    L.push(`  - catalog: ${catalogImage(c)}`, '    packages:');
+    for (const k of byCat[c]) {
+      const p = pkgOf(k), chs = selChannels(k), names = Object.keys(chs);
+      L.push(`    - name: ${p.n}`);
+      const onlyDefault = names.length === 1 && names[0] === p.dc && !chs[p.dc].min && !chs[p.dc].max;
+      if (onlyDefault && !o.explicitCh) continue;
+      // 선택 채널에 기본 채널이 없으면 oc-mirror 가 defaultChannel 지정을 요구함
+      if (p.dc && !names.includes(p.dc)) L.push(`      defaultChannel: ${yq(names[0])}`);
+      L.push('      channels:');
+      for (const ch of names) {
+        L.push(`      - name: ${yq(ch)}`);
+        if (chs[ch].min) L.push(`        minVersion: ${yq(chs[ch].min)}`);
+        if (chs[ch].max) L.push(`        maxVersion: ${yq(chs[ch].max)}`);
+      }
+    }
+  }
+  const imgs = (o.addImg || '').split(/[\s,]+/).filter(Boolean);
+  if (imgs.length) { L.push('  additionalImages:'); imgs.forEach(i => L.push(`  - name: ${i}`)); }
+  return L;
+}
+// [{name, text}] — 분리 모드면 OCP / Operator 두 파일
+function genISCFiles() {
+  const o = state.opt, ops = operatorLines(), done = L => L.join('\n') + '\n';
+  if (o.split && o.rel) {
+    return [
+      { name: 'imageset-config-ocp.yaml', text: done([...iscHeader('OpenShift release'), ...platformLines()]) },
+      { name: 'imageset-config-operators.yaml', text: done([...iscHeader('Operators'), ...(ops.length ? ops : ['  operators: []'])]) },
+    ];
+  }
+  const L = iscHeader(o.rel ? 'OpenShift release + Operators' : 'Operators');
+  if (o.rel) L.push(...platformLines());
+  L.push(...ops);
+  if (!o.rel && !ops.length) L.push('  operators: []');
+  return [{ name: 'imageset-config.yaml', text: done(L) }];
+}
+function genISC() { const f = genISCFiles(); return f.length === 1 ? f[0].text : f.map(x => `# ===== ${x.name}\n${x.text}`).join('\n'); }
+
+function genTSV() {
+  const H = ['OCP', 'Catalog', 'Package', 'Display Name', 'Provider', 'Default Channel', 'Mirror Channel', 'Head Version', 'minVersion', 'maxVersion', 'Disconnected', 'Deprecated', 'Catalog Image'];
+  const rows = [H];
+  for (const k of selKeys()) {
+    const [c, n] = splitKey(k); const p = pkgOf(k);
+    if (!p) { rows.push([state.ocp, catLabel(c), n, '(없음)', '', '', '', '', '', '', '', '', catalogImage(c)]); continue; }
+    for (const [ch, cfg] of Object.entries(selChannels(k))) {
+      rows.push([state.ocp, catLabel(c), p.n, p.d || '', p.p || '', p.dc || '', ch, headOf(p, ch) || '', cfg.min || '', cfg.max || '',
+        p.disc === true ? 'Y' : p.disc === false ? 'N' : '', p.dep ? 'Y' : '', catalogImage(c)]);
+    }
+  }
+  return rows.map(r => r.map(x => String(x).replace(/[\t\r\n]+/g, ' ')).join('\t')).join('\n') + '\n';
+}
+
+function genNames() { return selKeys().map(k => splitKey(k)[1]).join('\n') + (selKeys().length ? '\n' : ''); }
+
+function genCmd() {
+  const keys = selKeys();
+  const byCat = {};
+  keys.forEach(k => { const [c, n] = splitKey(k); (byCat[c] = byCat[c] || []).push([k, n]); });
+  const files = genISCFiles().map(f => f.name);
+  const dir = n => n.replace(/^imageset-config-?/, 'mirror-').replace(/\.yaml$/, '').replace(/^mirror-$/, 'mirror') + '-data';
+  const L = ['# 1) 미러 → 디스크 (인터넷 환경)'];
+  files.forEach(f => L.push(`oc-mirror -c ./${f} file://./${dir(f)} --v2`));
+  L.push('', '# 2) 디스크 → 내부 레지스트리 (폐쇄망 환경)');
+  files.forEach(f => L.push(`oc-mirror -c ./${f} --from file://./${dir(f)} docker://<registry>:<port> --v2`));
+  L.push('', '# 3) 클러스터에 IDMS/ITMS, CatalogSource 등 적용');
+  files.forEach(f => L.push(`oc apply -f ./${dir(f)}/working-dir/cluster-resources/`));
+  L.push('', '# 카탈로그 전체 패키지 목록 (기존 방식)');
+  catsFor(state.ocp).forEach(c => L.push(`oc-mirror --v2 list operators --catalog=${catalogImage(c)} > ${c === 'redhat' ? 'package' : c === 'certified' ? 'cert' : c}.out`));
+  if (keys.length) {
+    L.push('', '# 선택한 오퍼레이터 채널 / 버전 확인');
+    for (const c of Object.keys(byCat)) for (const [k, n] of byCat[c]) {
+      L.push(`oc-mirror --v2 list operators --catalog=${catalogImage(c)} --package=${n}`);
+      const p = pkgOf(k);
+      if (p) Object.keys(selChannels(k)).forEach(ch => L.push(`oc-mirror --v2 list operators --catalog=${catalogImage(c)} --package=${n} --channel=${ch}`));
+    }
+  }
+  return L.join('\n') + '\n';
+}
+
+async function renderCompare() {
+  const body = $('#outBody');
+  const keys = selKeys();
+  if (!keys.length) { body.innerHTML = `<pre># 선택한 오퍼레이터가 OCP 버전별로 어떤 기본 채널/버전을 제공하는지 비교합니다.\n# 먼저 오퍼레이터를 선택하세요.</pre>`; return; }
+  const vs = versions().slice().reverse();
+  const cats = [...new Set(keys.map(k => splitKey(k)[0]))];
+  body.innerHTML = '<pre>불러오는 중…</pre>';
+  await Promise.all(vs.flatMap(v => cats.map(c => loadCatalog(v, c))));
+  if (state.tab !== 'cmp') return;
+  const cell = (v, k) => {
+    const [c, n] = splitKey(k); const d = catData(v, c);
+    if (!d) return `<td class="no${v === state.ocp ? ' cur' : ''}">데이터 없음</td>`;
+    const p = d.byName.get(n);
+    if (!p) return `<td class="no${v === state.ocp ? ' cur' : ''}">✕ 없음</td>`;
+    return `<td class="${v === state.ocp ? 'cur' : ''}"><span class="mono">${esc(p.dc)}</span><br><span class="mono" style="color:var(--muted)">${esc(headOf(p) || '')}</span>${p.dep ? ' <span class="tag warn">dep</span>' : ''}</td>`;
+  };
+  body.innerHTML = `<table class="cmp"><thead><tr><th>Package</th>${vs.map(v => `<th>${esc(v)}</th>`).join('')}</tr></thead><tbody>${
+    keys.map(k => `<tr><td class="mono">${esc(splitKey(k)[1])}</td>${vs.map(v => cell(v, k)).join('')}</tr>`).join('')
+  }</tbody></table>`;
+  compareText = [['Package', ...vs].join('\t'), ...keys.map(k => [splitKey(k)[1], ...vs.map(v => {
+    const [c, n] = splitKey(k); const d = catData(v, c); const p = d && d.byName.get(n);
+    return !d ? 'N/A' : !p ? '-' : `${p.dc} ${headOf(p) || ''}`.trim();
+  })].join('\t'))].join('\n') + '\n';
+}
+let compareText = '';
+
+function currentText() {
+  switch (state.tab) {
+    case 'isc': return genISC();
+    case 'tsv': return genTSV();
+    case 'names': return genNames();
+    case 'cmd': return genCmd();
+    case 'cmp': return compareText;
+  }
+  return '';
+}
+const FILES = { isc: 'imageset-config.yaml', tsv: 'operators.tsv', names: 'operators.txt', cmd: 'oc-mirror-commands.sh', cmp: 'version-compare.tsv' };
+const HINTS = {
+  isc: 'oc-mirror v2 ImageSetConfiguration',
+  tsv: '엑셀에 바로 붙여넣기 (탭 구분)',
+  names: '패키지 이름만 한 줄씩',
+  cmd: '미러링 및 확인 명령어',
+  cmp: '로드 가능한 모든 OCP 버전과 비교 · 복사 시 TSV',
+};
+function renderBody() {
+  if (state.tab === 'isc') {
+    const files = genISCFiles();
+    $('#outBody').innerHTML = files.map((f, i) => `<div class="file-head"><span class="fn">${esc(f.name)}</span>
+      <button class="btn sm" data-fdl="${i}">다운로드</button><button class="btn sm" data-fcp="${i}">복사</button></div><pre>${esc(f.text)}</pre>`).join('');
+    $('#dlBtn').textContent = files.length > 1 ? `모두 다운로드 (${files.length})` : '다운로드';
+    return;
+  }
+  $('#dlBtn').textContent = '다운로드';
+  $('#outBody').innerHTML = `<pre>${esc(currentText())}</pre>`;
+}
+function renderOutput() {
+  renderOutOpts();
+  $('#outHint').textContent = HINTS[state.tab];
+  if (state.tab === 'cmp') { $('#dlBtn').textContent = '다운로드'; renderCompare(); return; }
+  renderBody();
+}
+
+// ===================================================================== actions
+function toggleSel(k, on) {
+  if (on === undefined) on = !state.sel[k];
+  if (on) { if (!state.sel[k]) state.sel[k] = { ch: null }; }
+  else delete state.sel[k];
+}
+function setChannel(k, ch, on) {
+  const s = state.sel[k]; if (!s) return;
+  const cur = Object.assign({}, selChannels(k));
+  if (on) cur[ch] = cur[ch] || {}; else delete cur[ch];
+  s.ch = Object.keys(cur).length ? cur : null;
+}
+function refresh(opts = {}) {
+  if (opts.table !== false) renderTable();
+  renderSide();
+  save();
+}
+
+async function switchVersion(v) {
+  state.ocp = v; state.open.clear(); state.limit = 300;
+  renderVersions(); renderChips();
+  $('#tbody').innerHTML = `<tr><td colspan="7" class="empty">불러오는 중…</td></tr>`;
+  await loadVersion(v);
+  // 새 버전에 없는 채널은 기본 채널로 되돌림
+  for (const k of Object.keys(state.sel)) {
+    const p = pkgOf(k), s = state.sel[k];
+    if (p && s.ch) {
+      const valid = Object.fromEntries(Object.entries(s.ch).filter(([ch]) => (p.ch || []).some(c => c.n === ch)).map(([ch, cfg]) => {
+        const c = p.ch.find(c => c.n === ch);
+        return [ch, { min: c.v.includes(cfg.min) ? cfg.min : undefined, max: c.v.includes(cfg.max) ? cfg.max : undefined }];
+      }));
+      s.ch = Object.keys(valid).length ? valid : null;
+    }
+  }
+  renderChips(); renderMeta(); refresh();
+  const missing = Object.keys(state.sel).filter(k => !pkgOf(k));
+  if (missing.length) toast(`OCP ${v} 에 없는 오퍼레이터 ${missing.length}개 (노란색 표시)`);
+}
+
+function importList(text, replace) {
+  const cats = catsFor(state.ocp);
+  const lookup = new Map();
+  for (const c of cats) { const d = catData(state.ocp, c); if (d) for (const p of d.packages) if (!lookup.has(p.n)) lookup.set(p.n, c); }
+  if (replace) state.sel = {};
+  const found = [], notFound = [], chNote = [];
+  const lines = text.split(/\r?\n/).flatMap(l => l.includes('\t') || /\s{2,}|\s/.test(l.trim()) ? [l] : l.split(','));
+  for (const line of lines) {
+    const toks = line.split(/[\s,;|]+/).map(t => t.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
+    if (!toks.length) continue;
+    const idx = toks.findIndex(t => lookup.has(t));
+    if (idx < 0) { if (/^[a-z0-9][a-z0-9.-]+$/i.test(toks[0]) && !/^(name|package|no|#)$/i.test(toks[0])) notFound.push(toks[0]); continue; }
+    const n = toks[idx], c = lookup.get(n), k = keyOf(c, n);
+    toggleSel(k, true); found.push(n);
+    const p = catData(state.ocp, c).byName.get(n);
+    const ch = toks.slice(idx + 1).find(t => (p.ch || []).some(x => x.n === t));
+    if (ch) { state.sel[k].ch = Object.assign({}, state.sel[k].ch && ch !== p.dc ? state.sel[k].ch : {}, { [ch]: {} }); if (ch !== p.dc) chNote.push(`${n} → ${ch}`); }
+  }
+  refresh();
+  const uniq = a => [...new Set(a)];
+  return `선택됨 ${uniq(found).length}개` + (chNote.length ? `\n채널 지정: ${chNote.join(', ')}` : '') +
+    (notFound.length ? `\nOCP ${state.ocp} 카탈로그에서 찾지 못함 ${uniq(notFound).length}개: ${uniq(notFound).join(', ')}` : '');
+}
+
+function parseOut(text) {
+  const lines = text.split(/\r?\n/);
+  const hi = lines.findIndex(l => /^\s*NAME\s+DISPLAY NAME\s+DEFAULT CHANNEL/.test(l));
+  if (hi < 0) throw new Error('헤더(NAME  DISPLAY NAME  DEFAULT CHANNEL)를 찾을 수 없습니다.');
+  const out = [];
+  for (const l of lines.slice(hi + 1)) {
+    if (!l.trim() || /^\s*(\d{4}\/\d\d\/\d\d|\[|time=|[IW]\d{4})/.test(l)) continue;
+    // 패키지 이름과 채널 이름에는 공백이 없으므로 첫/마지막 토큰, 나머지는 표시 이름
+    const toks = l.trim().split(/\s+/); if (toks.length < 2) continue;
+    const n = toks[0], dc = toks[toks.length - 1];
+    const d = l.trim().slice(n.length, l.trim().length - dc.length).trim();
+    out.push({ n, d, dc, ch: dc ? [{ n: dc, h: null, v: [] }] : [] });
+  }
+  return out.sort((a, b) => a.n.localeCompare(b.n));
+}
+
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); }
+  catch (e) {
+    const ta = document.createElement('textarea'); ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (e2) {} ta.remove();
+  }
+  toast('클립보드에 복사했습니다');
+}
+function download(name, text) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+  a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+
+// ===================================================================== events
+function bind() {
+  $('#ocpSel').addEventListener('change', e => switchVersion(e.target.value));
+  let qt; $('#q').addEventListener('input', e => { clearTimeout(qt); qt = setTimeout(() => { state.q = e.target.value; state.limit = 300; renderTable(); }, 80); });
+  document.addEventListener('keydown', e => {
+    if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); $('#q').focus(); }
+  });
+  $('#catChips').addEventListener('click', e => {
+    const ch = e.target.closest('.chip'); if (!ch) return;
+    const all = catsFor(state.ocp), c = ch.dataset.cat;
+    const cur = state.cats ? new Set(state.cats) : new Set(all);
+    if (cur.has(c)) cur.delete(c); else cur.add(c);
+    state.cats = !cur.size || all.every(x => cur.has(x)) ? null : cur;
+    state.limit = 300; renderChips(); renderTable(); save();
+  });
+  [['#fDisc', 'fDisc'], ['#fDep', 'fDep'], ['#fSel', 'fSel']].forEach(([s, k]) => {
+    $(s).checked = state[k];
+    $(s).addEventListener('change', e => { state[k] = e.target.checked; state.limit = 300; renderTable(); save(); });
+  });
+  document.querySelectorAll('th[data-sort]').forEach(th => th.addEventListener('click', () => {
+    const k = th.dataset.sort;
+    state.sort = { k, dir: state.sort.k === k ? -state.sort.dir : 1 };
+    renderTable();
+  }));
+  $('#ckAll').addEventListener('change', e => {
+    rowsFiltered().forEach(r => toggleSel(r.k, e.target.checked));
+    refresh();
+  });
+  $('#moreBtn').addEventListener('click', () => { state.limit += 500; renderTable(); });
+
+  const tb = $('#tbody');
+  tb.addEventListener('click', e => {
+    const t = e.target;
+    if (t.matches('input[data-ck]')) { toggleSel(t.dataset.ck, t.checked); if (t.checked) state.open.add(t.dataset.ck); refresh(); return; }
+    if (t.matches('input[data-chk]')) { setChannel(t.dataset.chk, t.dataset.ch, t.checked); refresh(); return; }
+    if (t.closest('tr.detail') || t.closest('select')) return;
+    const tr = t.closest('tr.row'); if (!tr) return;
+    const k = tr.dataset.k;
+    if (state.open.has(k)) state.open.delete(k); else state.open.add(k);
+    renderTable();
+  });
+  tb.addEventListener('change', e => {
+    const t = e.target;
+    const k = t.dataset.min || t.dataset.max; if (!k) return;
+    const s = state.sel[k]; if (!s) return;
+    const cur = Object.assign({}, selChannels(k));
+    const cfg = Object.assign({}, cur[t.dataset.ch]);
+    if (t.dataset.min) cfg.min = t.value || undefined; else cfg.max = t.value || undefined;
+    if (cfg.min && cfg.max && vcmp(cfg.min, cfg.max) > 0) { toast('minVersion 이 maxVersion 보다 큽니다'); }
+    cur[t.dataset.ch] = cfg; s.ch = cur;
+    refresh();
+  });
+
+  $('#selList').addEventListener('click', e => {
+    const rm = e.target.closest('[data-rm]');
+    if (rm) { delete state.sel[rm.dataset.rm]; refresh(); return; }
+    const g = e.target.closest('[data-goto]');
+    if (g) {
+      const k = g.dataset.goto; state.open.add(k);
+      const [c] = splitKey(k); if (state.cats && !state.cats.has(c)) { state.cats.add(c); renderChips(); }
+      $('#q').value = state.q = splitKey(k)[1]; renderTable();
+      const row = document.querySelector(`tr.row[data-k="${CSS.escape(k)}"]`); if (row) row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  });
+  $('#clearBtn').addEventListener('click', () => { if (!Object.keys(state.sel).length || confirm('선택을 모두 비울까요?')) { state.sel = {}; refresh(); } });
+  $('#shareBtn').addEventListener('click', () => {
+    const data = btoa(unescape(encodeURIComponent(JSON.stringify({ ocp: state.ocp, sel: state.sel, opt: state.opt }))));
+    const url = location.href.split('#')[0] + '#s=' + data;
+    history.replaceState(null, '', url); copyText(url);
+  });
+  $('#tabs').addEventListener('click', e => { const t = e.target.closest('.tab'); if (!t) return; state.tab = t.dataset.tab; renderSide(); save(); });
+  const onOpt = e => {
+    const t = e.target, k = t.dataset.opt; if (!k) return;
+    state.opt[k] = t.type === 'checkbox' ? t.checked : t.type === 'radio' ? !!t.value : t.value;
+    if (k === 'relMax' && state.opt.relMin && vcmp(state.opt.relMin, t.value) >= 0) state.opt.relMin = '';
+    // 텍스트 입력은 포커스 유지를 위해 본문만 다시 그림
+    if (t.type === 'text') renderBody(); else renderOutput();
+    save();
+  };
+  $('#outOpts').addEventListener('change', e => { if (e.target.type !== 'text') onOpt(e); });
+  $('#outOpts').addEventListener('input', e => { if (e.target.type === 'text') onOpt(e); });
+  $('#outBody').addEventListener('click', e => {
+    const b = e.target.closest('[data-fcp],[data-fdl]'); if (!b) return;
+    const f = genISCFiles()[+(b.dataset.fcp ?? b.dataset.fdl)];
+    if (b.dataset.fcp !== undefined) copyText(f.text); else download(f.name, f.text);
+  });
+  $('#copyBtn').addEventListener('click', () => copyText(currentText()));
+  $('#dlBtn').addEventListener('click', () => {
+    if (state.tab === 'isc') genISCFiles().forEach((f, i) => setTimeout(() => download(f.name, f.text), i * 300));
+    else download(FILES[state.tab], currentText());
+  });
+
+  document.querySelectorAll('dialog [data-close]').forEach(b => b.addEventListener('click', () => b.closest('dialog').close()));
+  $('#importBtn').addEventListener('click', () => { $('#importResult').textContent = ''; $('#importDlg').showModal(); });
+  $('#importGo').addEventListener('click', () => { $('#importResult').textContent = importList($('#importTxt').value, $('#importReplace').checked); });
+  const openOut = () => { $('#outResult').textContent = ''; if (state.ocp) $('#outVer').value = state.ocp; syncOutImg(); $('#outDlg').showModal(); };
+  $('#outBtn').addEventListener('click', openOut); $('#outBtn2').addEventListener('click', openOut);
+  const syncOutImg = () => {
+    const c = $('#outCat').value, v = $('#outVer').value.trim().replace(/^v/, '');
+    if (c !== 'custom') $('#outImg').value = `${CAT_IMAGE(c)}:v${v}`;
+  };
+  $('#outCat').addEventListener('change', () => { syncOutImg(); if ($('#outCat').value === 'custom') $('#outImg').focus(); });
+  $('#outVer').addEventListener('input', syncOutImg);
+  $('#outImg').addEventListener('input', () => { $('#outCat').value = 'custom'; });
+  $('#outFile').addEventListener('change', async e => {
+    const f = e.target.files[0]; if (!f) return;
+    const m = f.name.match(/cert|community|market|package|redhat/i);
+    if (m) $('#outCat').value = { cert: 'certified', community: 'community', market: 'marketplace', package: 'redhat', redhat: 'redhat' }[m[0].toLowerCase()];
+    const v = f.name.match(/4\.\d+/); if (v) $('#outVer').value = v[0];
+    syncOutImg();
+    // 파일 안에 --catalog=... 가 남아 있으면 그 이미지 사용
+    const cm = (await f.text()).match(/--catalog[= ]+(\S+)/);
+    if (cm) { $('#outImg').value = cm[1]; $('#outCat').value = 'custom'; const vv = cm[1].match(/:v?(\d+\.\d+)$/); if (vv) $('#outVer').value = vv[1]; }
+  });
+  $('#outGo').addEventListener('click', async () => {
+    const f = $('#outFile').files[0]; if (!f) { $('#outResult').textContent = '파일을 선택하세요.'; return; }
+    try {
+      const pk = parseOut(await f.text());
+      const ocp = $('#outVer').value.trim().replace(/^v/, '');
+      const image = $('#outImg').value.trim() || `${CAT_IMAGE($('#outCat').value)}:v${ocp}`;
+      const cat = $('#outCat').value !== 'custom' ? $('#outCat').value : catKeyFromImage(image);
+      window.OCM.load({ meta: { ocp, catalog: cat, label: CAT_LABEL[cat] || cat, image, source: 'oc-mirror-list', count: pk.length, generated: new Date().toISOString() }, packages: pk });
+      $('#outResult').textContent = `${pk.length}개 패키지를 OCP ${ocp} / ${catLabel(cat, ocp)} (${image}) 로 불러왔습니다.`;
+      $('#nodata').hidden = true; $('#app').hidden = false;
+      await switchVersion(ocp);
+    } catch (err) { $('#outResult').textContent = '오류: ' + err.message; }
+  });
+
+  $('#themeBtn').addEventListener('click', () => {
+    const r = document.documentElement;
+    const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    r.dataset.theme = dark ? 'light' : 'dark';
+    try { localStorage.setItem('ocm-theme', r.dataset.theme); } catch (e) {}
+  });
+}
+
+// ===================================================================== init
+(async function init() {
+  try { const t = localStorage.getItem('ocm-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  restore();
+  bind();
+  renderVersions();
+  if (!state.ocp) { $('#nodata').hidden = false; return; }
+  $('#app').hidden = false;
+  await switchVersion(state.ocp);
+})();
+})();
+</script>
+</body>
+</html>

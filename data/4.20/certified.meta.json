@@ -1,0 +1,12 @@
+{
+ "ocp": "4.20",
+ "catalog": "certified",
+ "label": "Certified",
+ "image": "registry.redhat.io/redhat/certified-operator-index:v4.20",
+ "source": "fbc",
+ "count": 194,
+ "generated": "2026-10-19T07:08:51Z",
+ "digest": "sha256:0c00803b526d4670813a8ab172e5ef32af75bcdc75319fd00dc735a676eeaa01",
+ "created": "2026-10-18T16:43:15.506144611Z",
+ "bundles": 1676
+}
