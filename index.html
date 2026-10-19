@@ -190,6 +190,12 @@ table.tools td a { font-family: var(--mono); font-size: 12px; color: var(--info)
 table.tools td .na { color: var(--faint); font-size: 12px; }
 .cmdbox { margin: 0; background: var(--code-bg); color: var(--code-text); padding: 10px 12px; border-radius: 8px; font: 11.5px/1.5 var(--mono); overflow: auto; max-height: 200px; white-space: pre; }
 #toolLinks a { color: var(--info); }
+fieldset.mreg { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px 10px; margin: 0; }
+fieldset.mreg legend { font-weight: 650; padding: 0 4px; }
+.mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px 12px; }
+.mgrid label { display: grid; gap: 3px; font-size: 12px; color: var(--muted); }
+.mgrid input { padding: 4px 7px; font-size: 12.5px; font-family: var(--mono); }
+#mWarn { color: var(--warn); margin-top: 6px; }
 dialog textarea { width: 100%; min-height: 200px; font-family: var(--mono); font-size: 12.5px; }
 dialog .note { color: var(--muted); font-size: 12.5px; }
 dialog .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
@@ -357,6 +363,23 @@ dialog .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
     </div>
     <table class="chs tools"><thead><tr><th>도구</th><th>용도</th><th>파일</th></tr></thead><tbody id="toolRows"></tbody></table>
     <div class="note" id="toolLinks"></div>
+    <fieldset class="mreg" id="mregBox">
+      <legend>mirror-registry 설치 옵션 <span class="note">(2.x · DB 는 SQLite)</span></legend>
+      <div class="mgrid">
+        <label>Quay 호스트명:포트 <input type="text" id="mHost" placeholder="registry.example.com:8443"></label>
+        <label>관리자 ID <input type="text" id="mUser" value="init"></label>
+        <label>관리자 비밀번호 <input type="password" id="mPass" placeholder="8자 이상" autocomplete="new-password"></label>
+        <label>설치/설정 디렉터리 (--quayRoot) <input type="text" id="mRoot" value="/data/quay-install"></label>
+        <label>이미지 저장소 (--quayStorage) <input type="text" id="mStorage" value="/data/quay-storage"></label>
+        <label>DB 저장소 (--sqliteStorage) <input type="text" id="mDb" value="/data/sqlite-storage"></label>
+        <label>SSL 인증서 (--sslCert) <input type="text" id="mCert" placeholder="비우면 자체 서명 생성"></label>
+        <label>SSL 키 (--sslKey) <input type="text" id="mKey" placeholder="비우면 자체 서명 생성"></label>
+        <label>원격 설치 대상 (-H) <input type="text" id="mTarget" placeholder="비우면 이 서버에 설치"></label>
+        <label>원격 SSH 사용자 (-u) <input type="text" id="mTUser" placeholder="$USER"></label>
+        <label>SSH 키 (-k) <input type="text" id="mSsh" placeholder="~/.ssh/quay_installer"></label>
+      </div>
+      <div class="note" id="mWarn"></div>
+    </fieldset>
     <pre class="cmdbox" id="toolCmd"></pre>
   </div>
   <div class="df">
@@ -1083,12 +1106,57 @@ function renderTools() {
     L.push('', '# 압축 해제 및 설치');
     avail.filter(t => t.name !== 'mirror-registry').forEach(t => L.push(`tar xzf ${t.url.split('/').pop()}`));
     L.push('for b in oc kubectl oc-mirror openshift-install opm; do [ -f "$b" ] && sudo install -m 0755 "$b" /usr/local/bin/; done', 'oc version --client && oc-mirror version');
-    if (avail.some(t => t.name === 'mirror-registry')) L.push('', '# mirror-registry', `mkdir -p mirror-registry && tar xzf ${avail.find(t => t.name === 'mirror-registry').url.split('/').pop()} -C mirror-registry`, './mirror-registry/mirror-registry install --quayHostname $(hostname -f) --quayRoot /opt/quay');
+    const mr = avail.find(t => t.name === 'mirror-registry');
+    if (mr) L.push('', ...mregCommands(mr.url.split('/').pop()));
   }
+  $('#mregBox').hidden = !avail.some(t => t.name === 'mirror-registry');
   $('#toolCmd').textContent = L.join('\n') + '\n';
   try { localStorage.setItem('ocm-tools', JSON.stringify({ os, arch })); } catch (e) {}
 }
+// 셸 인자 따옴표 처리
+const sq = v => /^[\w@%+=:,./~-]+$/.test(v) ? v : `'${v.replace(/'/g, `'\\''`)}'`;
+function mregCommands(tarName) {
+  const v = id => $('#' + id).value.trim();
+  const host = v('mHost') || '$(hostname -f):8443';
+  const root = v('mRoot') || '$HOME/quay-install', stor = v('mStorage'), db = v('mDb');
+  const pass = $('#mPass').value, user = v('mUser') || 'init';
+  const warn = [];
+  if (!pass) warn.push('비밀번호를 비우면 설치 시 무작위로 생성되어 설치 로그에만 출력됩니다.');
+  else if (pass.length < 8) warn.push('비밀번호는 8자 이상이어야 합니다.');
+  if (!!v('mCert') !== !!v('mKey')) warn.push('SSL 인증서와 키는 함께 지정해야 합니다.');
+  if (v('mTarget') && !v('mRoot')) warn.push('원격 설치 시 --quayRoot 지정이 필요합니다.');
+  $('#mWarn').textContent = warn.join(' ');
+  const hostOnly = host.replace(/:\d+$/, '');
+  const remote = !!v('mTarget');
+  const dirs = [v('mRoot'), stor, db].filter(Boolean);
+  const L = ['# ---- mirror-registry 설치',
+    '# 사전 조건: podman 설치, 8443/tcp 방화벽 허용, 호스트명 DNS(또는 /etc/hosts) 등록',
+    'sudo dnf install -y podman',
+    'sudo firewall-cmd --add-port=8443/tcp --permanent && sudo firewall-cmd --reload'];
+  if (dirs.length) L.push(`${remote ? '# (원격 대상 서버에서 실행) ' : ''}sudo mkdir -p ${dirs.map(sq).join(' ')} && sudo chown -R $(id -u):$(id -g) ${dirs.map(sq).join(' ')}`);
+  L.push(`mkdir -p mirror-registry && tar xzf ${tarName} -C mirror-registry && cd mirror-registry`);
+  const args = ['./mirror-registry install -v', `--quayHostname ${host.startsWith('$') ? `"${host}"` : sq(host)}`, `--initUser ${sq(user)}`];
+  if (pass) args.push(`--initPassword ${sq(pass)}`);
+  if (v('mRoot')) args.push(`--quayRoot ${sq(v('mRoot'))}`);
+  if (stor) args.push(`--quayStorage ${sq(stor)}`);
+  if (db) args.push(`--sqliteStorage ${sq(db)}`);
+  if (v('mCert')) args.push(`--sslCert ${sq(v('mCert'))}`, `--sslKey ${sq(v('mKey'))}`);
+  if (remote) { args.push(`--targetHostname ${sq(v('mTarget'))}`); if (v('mTUser')) args.push(`--targetUsername ${sq(v('mTUser'))}`); }
+  if (v('mSsh')) args.push(`-k ${sq(v('mSsh'))}`);
+  L.push(args.join(' \\\n  '));
+  if (v('mCert')) L.push('', '# 사설 CA 로 발급한 인증서라면 그 CA 를 신뢰 목록에 추가 (oc-mirror / podman 을 실행할 서버)',
+    'sudo cp <CA 인증서>.pem /etc/pki/ca-trust/source/anchors/ && sudo update-ca-trust');
+  else L.push('', '# 자동 생성된 rootCA 를 신뢰 목록에 추가 (oc-mirror / podman 을 실행할 서버)',
+    `sudo cp ${root}/quay-rootCA/rootCA.pem /etc/pki/ca-trust/source/anchors/quay-rootCA.pem && sudo update-ca-trust`);
+  L.push('', '# 로그인 확인 (oc-mirror 는 이 로그인 정보를 사용)',
+    `podman login -u ${sq(user)} -p ${pass ? sq(pass) : "'<설치 로그의 비밀번호>'"} ${host.startsWith('$') ? `"${host}"` : sq(host)}`,
+    `curl -k https://${hostOnly.startsWith('$') ? hostOnly : hostOnly}:${(host.match(/:(\d+)$/) || [, '8443'])[1]}/health/instance`);
+  return L;
+}
+const MREG_FIELDS = ['mHost', 'mUser', 'mRoot', 'mStorage', 'mDb', 'mCert', 'mKey', 'mTarget', 'mTUser', 'mSsh']; // 비밀번호는 저장 안 함
+function saveMreg() { try { localStorage.setItem('ocm-mreg', JSON.stringify(Object.fromEntries(MREG_FIELDS.map(f => [f, $('#' + f).value])))); } catch (e) {} }
 function openTools() {
+  try { const m = JSON.parse(localStorage.getItem('ocm-mreg') || 'null'); if (m) MREG_FIELDS.forEach(f => { if (m[f] !== undefined) $('#' + f).value = m[f]; }); } catch (e) {}
   const vers = [`stable-${state.ocp}`, `fast-${state.ocp}`, `latest-${state.ocp}`];
   const R = RELS[state.ocp], ch = R && (R.channels.stable || Object.values(R.channels)[0]);
   const exact = ch ? ch.v.filter(v => v.startsWith(state.ocp + '.')).reverse() : [];
@@ -1196,6 +1264,7 @@ function bind() {
   document.querySelectorAll('dialog [data-close]').forEach(b => b.addEventListener('click', () => b.closest('dialog').close()));
   $('#dlToolBtn').addEventListener('click', openTools);
   ['#tVer', '#tOs', '#tArch'].forEach(s => $(s).addEventListener('change', renderTools));
+  $('#mregBox').addEventListener('input', () => { renderTools(); saveMreg(); });
   $('#toolCopy').addEventListener('click', () => copyText($('#toolCmd').textContent));
   $('#importBtn').addEventListener('click', () => { $('#importResult').textContent = ''; $('#importDlg').showModal(); });
   $('#importGo').addEventListener('click', () => { $('#importResult').textContent = importList($('#importTxt').value, $('#importReplace').checked); });

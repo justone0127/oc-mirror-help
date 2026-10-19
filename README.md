@@ -79,6 +79,8 @@ python3 -m http.server 8080     # 팀에 공유할 때
   - `버전 비교` — 수집된 모든 OCP 버전에서 선택한 오퍼레이터의 기본 채널/head 비교 (업그레이드 계획용)
 - **도구 다운로드**: OCP 버전·서버 OS(RHEL 9/8, macOS, Windows)·아키텍처에 맞는 `oc-mirror`, `oc`, `openshift-install`, `opm`, `mirror-registry` 다운로드 링크와
   `curl` 다운로드·설치 명령을 한 번에 복사 (mirror.openshift.com)
+  - mirror-registry 설치 옵션 입력: 호스트명:포트, 관리자 ID/비밀번호, `--quayRoot`(설치/설정), `--quayStorage`(이미지), `--sqliteStorage`(DB),
+    SSL 인증서/키, 원격 설치(-H/-u/-k) → 사전 조건·설치·인증서 신뢰·로그인 확인 명령 생성 (비밀번호는 브라우저에 저장하지 않음)
 - 선택은 브라우저에 자동 저장되며, **링크** 버튼으로 선택 상태가 담긴 URL을 공유할 수 있습니다.
 
 ## 버전 추가 / 데이터 갱신
