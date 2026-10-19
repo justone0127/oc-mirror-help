@@ -1,7 +1,7 @@
 # Operator Mirror Picker
 
 폐쇄망 OpenShift 설치 준비용 페이지입니다. OCP 버전별 Operator 카탈로그(Red Hat / Certified / Community)를 한 화면에서 검색하고,
-필요한 Operator·채널·버전을 고르면 `oc-mirror --v2` 용 **ImageSetConfiguration**, **엑셀(TSV)**, **이름 목록**, **명령어**를 바로 복사할 수 있습니다.
+필요한 Operator·채널·버전을 고르면 `oc-mirror --v2` 용 **ImageSetConfiguration**, **엑셀(CSV)**, **이름 목록**, **명령어**를 바로 복사할 수 있습니다.
 
 ## 구성
 
