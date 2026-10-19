@@ -184,6 +184,12 @@ dialog::backdrop { background: rgba(10,14,20,.45); }
 dialog .dh { padding: 14px 18px; border-bottom: 1px solid var(--line); font-weight: 650; }
 dialog .db { padding: 14px 18px; display: grid; gap: 10px; }
 dialog .df { padding: 12px 18px; border-top: 1px solid var(--line); display: flex; gap: 8px; justify-content: flex-end; }
+dialog.wide { width: min(860px, calc(100vw - 32px)); }
+table.tools td { vertical-align: top; }
+table.tools td a { font-family: var(--mono); font-size: 12px; color: var(--info); word-break: break-all; }
+table.tools td .na { color: var(--faint); font-size: 12px; }
+.cmdbox { margin: 0; background: var(--code-bg); color: var(--code-text); padding: 10px 12px; border-radius: 8px; font: 11.5px/1.5 var(--mono); overflow: auto; max-height: 200px; white-space: pre; }
+#toolLinks a { color: var(--info); }
 dialog textarea { width: 100%; min-height: 200px; font-family: var(--mono); font-size: 12.5px; }
 dialog .note { color: var(--muted); font-size: 12.5px; }
 dialog .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
@@ -219,6 +225,7 @@ dialog .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
   </div>
   <button class="btn sm" id="importBtn" title="엑셀 등에서 복사한 오퍼레이터 이름 목록으로 한꺼번에 선택">목록 붙여넣기</button>
   <button class="btn sm" id="outBtn" title="oc-mirror list operators 결과 파일(.out)을 직접 불러오기">.out 불러오기</button>
+  <button class="btn sm" id="dlToolBtn" title="oc-mirror, oc, openshift-install, mirror-registry 다운로드 링크">도구 다운로드</button>
   <div class="meta" id="meta"></div>
   <button class="btn sm ghost theme-btn" id="themeBtn" title="테마 전환">◐</button>
 </header>
@@ -333,6 +340,28 @@ dialog .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
   <div class="df">
     <button class="btn" data-close>닫기</button>
     <button class="btn primary" id="outGo">불러오기</button>
+  </div>
+</dialog>
+
+<dialog id="toolDlg" class="wide">
+  <div class="dh">CLI / mirror-registry 다운로드</div>
+  <div class="db">
+    <div class="row note">
+      <label>OCP 버전 <select id="tVer"></select></label>
+      <label>설치할 서버 OS <select id="tOs">
+        <option value="rhel9">RHEL 9</option><option value="rhel8">RHEL 8</option>
+        <option value="mac">macOS</option><option value="win">Windows</option></select></label>
+      <label>아키텍처 <select id="tArch">
+        <option value="x86_64">x86_64 (amd64)</option><option value="aarch64">aarch64 (arm64)</option>
+        <option value="ppc64le">ppc64le</option><option value="s390x">s390x</option></select></label>
+    </div>
+    <table class="chs tools"><thead><tr><th>도구</th><th>용도</th><th>파일</th></tr></thead><tbody id="toolRows"></tbody></table>
+    <div class="note" id="toolLinks"></div>
+    <pre class="cmdbox" id="toolCmd"></pre>
+  </div>
+  <div class="df">
+    <button class="btn" data-close>닫기</button>
+    <button class="btn primary" id="toolCopy">다운로드 명령 복사</button>
   </div>
 </dialog>
 
@@ -1007,6 +1036,70 @@ function download(name, text, type = 'text/plain') {
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
 }
 
+// ===================================================================== tool downloads
+const MIRROR = 'https://mirror.openshift.com/pub/openshift-v4';
+const MREG = 'https://mirror.openshift.com/pub/cgw/mirror-registry';
+const ARCH_ALIAS = { x86_64: 'amd64', aarch64: 'arm64', ppc64le: 'ppc64le', s390x: 's390x' };
+function toolList(ver, os, arch) {
+  const a = ARCH_ALIAS[arch];
+  // macOS / Windows 바이너리는 x86_64 디렉터리에 있음
+  const dir = `${MIRROR}/${os === 'mac' || os === 'win' ? 'x86_64' : arch}/clients/ocp/${ver}`;
+  const macArm = os === 'mac' && arch === 'aarch64';
+  const f = {
+    ocmirror: { rhel9: 'oc-mirror.rhel9.tar.gz', rhel8: 'oc-mirror.tar.gz' }[os],
+    oc: { rhel9: `openshift-client-linux-${a}-rhel9.tar.gz`, rhel8: `openshift-client-linux-${a}-rhel8.tar.gz`,
+          mac: macArm ? 'openshift-client-mac-arm64.tar.gz' : 'openshift-client-mac.tar.gz', win: 'openshift-client-windows.zip' }[os],
+    install: { rhel9: arch === 'x86_64' ? 'openshift-install-rhel9-amd64.tar.gz' : 'openshift-install-linux.tar.gz', rhel8: 'openshift-install-linux.tar.gz',
+               mac: macArm ? 'openshift-install-mac-arm64.tar.gz' : 'openshift-install-mac.tar.gz' }[os],
+    opm: { rhel9: 'opm-linux-rhel9.tar.gz', rhel8: 'opm-linux.tar.gz', mac: 'opm-mac.tar.gz', win: 'opm-windows.tar.gz' }[os],
+  };
+  const mreg = (os === 'rhel9' || os === 'rhel8') && arch !== 'aarch64' ? `${MREG}/latest/mirror-registry-${a}.tar.gz` : null;
+  return [
+    { name: 'oc-mirror', desc: '이미지/오퍼레이터 미러링 (ImageSetConfiguration 사용)', url: f.ocmirror && `${dir}/${f.ocmirror}`, na: 'Linux 전용' },
+    { name: 'oc', desc: 'OpenShift CLI (oc, kubectl)', url: f.oc && `${dir}/${f.oc}` },
+    { name: 'openshift-install', desc: '클러스터 설치 프로그램', url: f.install && `${dir}/${f.install}`, na: 'Windows 미제공' },
+    { name: 'opm', desc: '카탈로그(FBC) 확인/편집', url: f.opm && `${dir}/${f.opm}` },
+    { name: 'mirror-registry', desc: '폐쇄망용 경량 Quay 레지스트리 (최신 버전)', url: mreg, na: os === 'mac' || os === 'win' ? 'RHEL 전용' : 'aarch64 미제공 (amd64/ppc64le/s390x)' },
+  ].map(t => ({ ...t, dir }));
+}
+function renderTools() {
+  const ver = $('#tVer').value, os = $('#tOs').value, arch = $('#tArch').value;
+  const list = toolList(ver, os, arch);
+  $('#toolRows').innerHTML = list.map(t => `<tr><td class="mono">${esc(t.name)}</td><td>${esc(t.desc)}</td>
+    <td>${t.url ? `<a href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.url.split('/').pop())}</a>` : `<span class="na">${esc(t.na || '미제공')}</span>`}</td></tr>`).join('');
+  const dir = list[0].dir;
+  $('#toolLinks').innerHTML = [
+    `<a href="${esc(dir)}/" target="_blank" rel="noopener">${esc(ver)} 전체 파일 목록</a>`,
+    `<a href="${esc(dir)}/release.txt" target="_blank" rel="noopener">release.txt</a>`,
+    `<a href="${esc(dir)}/sha256sum.txt" target="_blank" rel="noopener">sha256sum.txt</a>`,
+    `<a href="${MREG}/" target="_blank" rel="noopener">mirror-registry 전체 버전</a>`,
+    `<a href="https://console.redhat.com/openshift/install/pull-secret" target="_blank" rel="noopener">Pull secret</a>`,
+    `<a href="https://console.redhat.com/openshift/downloads" target="_blank" rel="noopener">Red Hat Console 다운로드</a>`,
+  ].join(' · ');
+  const avail = list.filter(t => t.url);
+  const L = [`# OCP ${ver} / ${$('#tOs').selectedOptions[0].text} / ${arch}`];
+  avail.forEach(t => L.push(`curl -LO ${t.url}`));
+  if (os === 'rhel9' || os === 'rhel8') {
+    L.push('', '# 압축 해제 및 설치');
+    avail.filter(t => t.name !== 'mirror-registry').forEach(t => L.push(`tar xzf ${t.url.split('/').pop()}`));
+    L.push('for b in oc kubectl oc-mirror openshift-install opm; do [ -f "$b" ] && sudo install -m 0755 "$b" /usr/local/bin/; done', 'oc version --client && oc-mirror version');
+    if (avail.some(t => t.name === 'mirror-registry')) L.push('', '# mirror-registry', `mkdir -p mirror-registry && tar xzf ${avail.find(t => t.name === 'mirror-registry').url.split('/').pop()} -C mirror-registry`, './mirror-registry/mirror-registry install --quayHostname $(hostname -f) --quayRoot /opt/quay');
+  }
+  $('#toolCmd').textContent = L.join('\n') + '\n';
+  try { localStorage.setItem('ocm-tools', JSON.stringify({ os, arch })); } catch (e) {}
+}
+function openTools() {
+  const vers = [`stable-${state.ocp}`, `fast-${state.ocp}`, `latest-${state.ocp}`];
+  const R = RELS[state.ocp], ch = R && (R.channels.stable || Object.values(R.channels)[0]);
+  const exact = ch ? ch.v.filter(v => v.startsWith(state.ocp + '.')).reverse() : [];
+  const target = state.opt.rel ? relResolved().max : '';
+  $('#tVer').innerHTML = vers.map(v => `<option value="${v}">${v}${v.startsWith('stable') ? ' (최신 stable)' : ''}</option>`).join('') +
+    (exact.length ? `<optgroup label="특정 버전">${exact.map(v => `<option${v === target ? ' selected' : ''}>${v}</option>`).join('')}</optgroup>` : '');
+  try { const t = JSON.parse(localStorage.getItem('ocm-tools') || 'null'); if (t) { $('#tOs').value = t.os; $('#tArch').value = t.arch; } } catch (e) {}
+  renderTools();
+  $('#toolDlg').showModal();
+}
+
 // ===================================================================== events
 function bind() {
   $('#ocpSel').addEventListener('change', e => switchVersion(e.target.value));
@@ -1101,6 +1194,9 @@ function bind() {
   });
 
   document.querySelectorAll('dialog [data-close]').forEach(b => b.addEventListener('click', () => b.closest('dialog').close()));
+  $('#dlToolBtn').addEventListener('click', openTools);
+  ['#tVer', '#tOs', '#tArch'].forEach(s => $(s).addEventListener('change', renderTools));
+  $('#toolCopy').addEventListener('click', () => copyText($('#toolCmd').textContent));
   $('#importBtn').addEventListener('click', () => { $('#importResult').textContent = ''; $('#importDlg').showModal(); });
   $('#importGo').addEventListener('click', () => { $('#importResult').textContent = importList($('#importTxt').value, $('#importReplace').checked); });
   const openOut = () => { $('#outResult').textContent = ''; if (state.ocp) $('#outVer').value = state.ocp; syncOutImg(); $('#outDlg').showModal(); };
