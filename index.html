@@ -265,7 +265,7 @@ dialog .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
     <div class="sel-list" id="selList"></div>
     <div class="tabs" id="tabs">
       <button class="tab on" data-tab="isc">ImageSetConfiguration</button>
-      <button class="tab" data-tab="tsv">엑셀(TSV)</button>
+      <button class="tab" data-tab="tsv">엑셀</button>
       <button class="tab" data-tab="names">이름 목록</button>
       <button class="tab" data-tab="cmd">명령어</button>
       <button class="tab" data-tab="cmp">버전 비교</button>
@@ -800,7 +800,13 @@ function genISCFiles() {
 }
 function genISC() { const f = genISCFiles(); return f.length === 1 ? f[0].text : f.map(x => `# ===== ${x.name}\n${x.text}`).join('\n'); }
 
-function genTSV() {
+// 표 데이터 → 붙여넣기용 TSV / 파일용 CSV(엑셀 한글 깨짐 방지 BOM 포함)
+const toTSV = rows => rows.map(r => r.map(x => String(x ?? '').replace(/[\t\r\n]+/g, ' ')).join('\t')).join('\n') + '\n';
+const toCSV = rows => '\ufeff' + rows.map(r => r.map(x => { x = String(x ?? ''); return /[",\r\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x; }).join(',')).join('\r\n') + '\r\n';
+const rowsTable = rows => `<table class="cmp"><thead><tr>${rows[0].map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${
+  rows.slice(1).map(r => `<tr>${r.map(x => `<td>${esc(x)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+
+function excelRows() {
   const H = ['OCP', 'Catalog', 'Package', 'Display Name', 'Provider', 'Default Channel', 'Mirror Channel', 'Head Version', 'minVersion', 'maxVersion', 'Disconnected', 'Deprecated', 'Catalog Image'];
   const rows = [H];
   for (const k of selKeys()) {
@@ -811,7 +817,7 @@ function genTSV() {
         p.disc === true ? 'Y' : p.disc === false ? 'N' : '', p.dep ? 'Y' : '', catalogImage(c)]);
     }
   }
-  return rows.map(r => r.map(x => String(x).replace(/[\t\r\n]+/g, ' ')).join('\t')).join('\n') + '\n';
+  return rows;
 }
 
 function genNames() { return selKeys().map(k => splitKey(k)[1]).join('\n') + (selKeys().length ? '\n' : ''); }
@@ -860,30 +866,33 @@ async function renderCompare() {
   body.innerHTML = `<table class="cmp"><thead><tr><th>Package</th>${vs.map(v => `<th>${esc(v)}</th>`).join('')}</tr></thead><tbody>${
     keys.map(k => `<tr><td class="mono">${esc(splitKey(k)[1])}</td>${vs.map(v => cell(v, k)).join('')}</tr>`).join('')
   }</tbody></table>`;
-  compareText = [['Package', ...vs].join('\t'), ...keys.map(k => [splitKey(k)[1], ...vs.map(v => {
+  // 엑셀용: 버전마다 채널 / head 두 열
+  compareRows = [['Package', ...vs.flatMap(v => [`${v} channel`, `${v} head`])], ...keys.map(k => [splitKey(k)[1], ...vs.flatMap(v => {
     const [c, n] = splitKey(k); const d = catData(v, c); const p = d && d.byName.get(n);
-    return !d ? 'N/A' : !p ? '-' : `${p.dc} ${headOf(p) || ''}`.trim();
-  })].join('\t'))].join('\n') + '\n';
+    return !d ? ['N/A', ''] : !p ? ['없음', ''] : [p.dc, headOf(p) || ''];
+  })])];
 }
-let compareText = '';
+let compareRows = [['Package']];
+
+function currentRows() { return state.tab === 'tsv' ? excelRows() : state.tab === 'cmp' ? compareRows : null; }
 
 function currentText() {
   switch (state.tab) {
     case 'isc': return genISC();
-    case 'tsv': return genTSV();
+    case 'tsv': return toTSV(excelRows());
     case 'names': return genNames();
     case 'cmd': return genCmd();
-    case 'cmp': return compareText;
+    case 'cmp': return toTSV(compareRows);
   }
   return '';
 }
-const FILES = { isc: 'imageset-config.yaml', tsv: 'operators.tsv', names: 'operators.txt', cmd: 'oc-mirror-commands.sh', cmp: 'version-compare.tsv' };
+const FILES = { isc: 'imageset-config.yaml', tsv: 'operators.csv', names: 'operators.txt', cmd: 'oc-mirror-commands.sh', cmp: 'version-compare.csv' };
 const HINTS = {
   isc: 'oc-mirror v2 ImageSetConfiguration',
-  tsv: '엑셀에 바로 붙여넣기 (탭 구분)',
+  tsv: '복사 → 엑셀에 붙여넣기 · 다운로드 → CSV 파일',
   names: '패키지 이름만 한 줄씩',
   cmd: '미러링 및 확인 명령어',
-  cmp: '로드 가능한 모든 OCP 버전과 비교 · 복사 시 TSV',
+  cmp: '수집된 모든 OCP 버전과 비교 · 복사 → 엑셀 붙여넣기 · 다운로드 → CSV',
 };
 function renderBody() {
   if (state.tab === 'isc') {
@@ -893,13 +902,14 @@ function renderBody() {
     $('#dlBtn').textContent = files.length > 1 ? `모두 다운로드 (${files.length})` : '다운로드';
     return;
   }
-  $('#dlBtn').textContent = '다운로드';
+  $('#dlBtn').textContent = state.tab === 'tsv' ? 'CSV 다운로드' : '다운로드';
+  if (state.tab === 'tsv') { $('#outBody').innerHTML = rowsTable(excelRows()); return; }
   $('#outBody').innerHTML = `<pre>${esc(currentText())}</pre>`;
 }
 function renderOutput() {
   renderOutOpts();
   $('#outHint').textContent = HINTS[state.tab];
-  if (state.tab === 'cmp') { $('#dlBtn').textContent = '다운로드'; renderCompare(); return; }
+  if (state.tab === 'cmp') { $('#dlBtn').textContent = 'CSV 다운로드'; renderCompare(); return; }
   renderBody();
 }
 
@@ -990,9 +1000,9 @@ async function copyText(t) {
   }
   toast('클립보드에 복사했습니다');
 }
-function download(name, text) {
+function download(name, text, type = 'text/plain') {
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+  a.href = URL.createObjectURL(new Blob([text], { type: type + ';charset=utf-8' }));
   a.download = name; document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
 }
@@ -1086,6 +1096,7 @@ function bind() {
   $('#copyBtn').addEventListener('click', () => copyText(currentText()));
   $('#dlBtn').addEventListener('click', () => {
     if (state.tab === 'isc') genISCFiles().forEach((f, i) => setTimeout(() => download(f.name, f.text), i * 300));
+    else if (currentRows()) download(FILES[state.tab], toCSV(currentRows()), 'text/csv');
     else download(FILES[state.tab], currentText());
   });
 

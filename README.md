@@ -74,7 +74,7 @@ python3 -m http.server 8080     # 팀에 공유할 때
       아키텍처, `graph`, `kubeVirtContainer` 옵션
     - **파일 하나** 또는 **OCP / Operator 분리**(`imageset-config-ocp.yaml`, `imageset-config-operators.yaml`)
     - 선택 채널에 기본 채널이 없으면 `defaultChannel` 자동 추가, additionalImages 입력
-  - `엑셀(TSV)` — 엑셀에 그대로 붙여넣기
+  - `엑셀` — **복사**: 엑셀에 붙여넣으면 셀별로 들어감 · **CSV 다운로드**: `operators.csv` (UTF-8 BOM, 엑셀에서 한글 깨짐 없음)
   - `이름 목록`, `명령어`(oc-mirror 실행/확인 명령)
   - `버전 비교` — 수집된 모든 OCP 버전에서 선택한 오퍼레이터의 기본 채널/head 비교 (업그레이드 계획용)
 - 선택은 브라우저에 자동 저장되며, **링크** 버튼으로 선택 상태가 담긴 URL을 공유할 수 있습니다.
