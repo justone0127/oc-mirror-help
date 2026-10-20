@@ -1350,6 +1350,7 @@ function renderPreset() {
   $('#pzDesc').innerHTML = `${esc(P.desc || '')} <span style="color:var(--faint)">· OCP ${esc(state.ocp)} 카탈로그 기준</span>` +
     ((P.links || []).length ? `<br>${P.links.map(l => `<a href="${esc(l.u)}" target="_blank" rel="noopener">${esc(l.t)}</a>`).join(' · ')}` : '');
   const H = [];
+  if (P.rhoai) H.push(rhoaiHtml('top'));
   for (const g of P.groups || []) {
     H.push(`<div class="pz-g"><div class="gh">${esc(g.name)}${g.pick === 'one' ? ' <span class="note">환경에 맞게 선택</span>' : ''}</div>`);
     for (const it of g.items) {
@@ -1358,7 +1359,7 @@ function renderPreset() {
       const dn = [...new Set(dl.map(d => d.n).filter(Boolean))];
       H.push(`<label class="pz-i${p ? '' : ' na'}"><input type="checkbox" data-pi="${esc(it.n)}"${on ? ' checked' : ''}${p ? '' : ' disabled'}>
         <span class="nm">${esc(it.n)}</span><span class="nt">${esc(it.note || (p && p.d) || '')}</span>
-        <span class="sub">${p ? `<span class="tag cat-${CAT_LABEL[splitKey(k)[0]] ? splitKey(k)[0] : 'other'}">${esc(catLabel(splitKey(k)[0]))}</span> <span class="mono">${esc(p.dc)} · ${esc(headOf(p) || '-')}</span>${state.sel[k] ? ' <span class="tag ok">선택됨</span>' : ''}${p.dep ? ' <span class="tag warn">deprecated</span>' : ''}${dn.length ? ` <span>의존: ${esc(dn.join(', '))}</span>` : ''}`
+        <span class="sub">${p ? `<span class="tag cat-${CAT_LABEL[splitKey(k)[0]] ? splitKey(k)[0] : 'other'}">${esc(catLabel(splitKey(k)[0]))}</span> <span class="mono">${esc(p.dc)} · ${esc(headOf(p) || '-')}</span>${P.rhoai && it.n === 'rhods-operator' && pz.pin && pz.rch ? ` <span class="tag def">→ ${esc(pz.rch)} · ${esc(rhoaiBundle(pz.rv))}${pz.rmode === 'from' ? ' ~ head' : ''}</span>` : ''}${state.sel[k] ? ' <span class="tag ok">선택됨</span>' : ''}${p.dep ? ' <span class="tag warn">deprecated</span>' : ''}${dn.length ? ` <span>의존: ${esc(dn.join(', '))}</span>` : ''}`
           : `<span class="tag warn">OCP ${esc(state.ocp)} 수집 카탈로그에 없음</span>`}</span></label>`);
     }
     if (g.pick === 'one' && P.notes) H.push(`<div class="pz-f">${esc(P.notes)}</div>`);
@@ -1372,12 +1373,13 @@ function renderPreset() {
     });
     H.push('</div>');
   }
-  if (P.rhoai) H.push(rhoaiHtml());
+  if (P.rhoai) H.push(rhoaiHtml('img'));
   $('#pzBody').innerHTML = H.join('');
 }
-function rhoaiHtml() {
-  if (RHOAI.d === undefined) { loadRhoai().then(() => $('#presetDlg').open && renderPreset()); return '<div class="pz-g"><div class="gh">RHOAI 추가 이미지</div><div class="pz-f">불러오는 중…</div></div>'; }
-  if (!RHOAI.d) return `<div class="pz-g"><div class="gh">RHOAI 추가 이미지</div><div class="pz-f">data/rhoai.js 가 없습니다 — <code>python3 build_data.py rhoai</code> 로 수집하세요.</div></div>`;
+// part: 'top' = 버전/채널 선택 (맨 위), 'img' = 추가 이미지 필터 (아래)
+function rhoaiHtml(part) {
+  if (RHOAI.d === undefined) { loadRhoai().then(() => $('#presetDlg').open && renderPreset()); return part === 'top' ? '<div class="pz-g"><div class="gh">RHOAI 버전 / 채널</div><div class="pz-f">불러오는 중…</div></div>' : ''; }
+  if (!RHOAI.d) return part === 'top' ? `<div class="pz-g"><div class="gh">RHOAI 버전 / 채널</div><div class="pz-f">data/rhoai.js 가 없습니다 — <code>./collect.sh --rhoai</code> 로 수집하세요.</div></div>` : '';
   const vs = rhoaiVers();
   // 기본: 현재 OCP 카탈로그에 있는 가장 높은 정식 버전
   if (!vs.includes(pz.rv) || !pz.rvUser) pz.rv = vs.find(v => !/-ea/.test(v) && rhoaiChannels(v).length) || vs.find(v => !/-ea/.test(v)) || vs[0];
@@ -1388,13 +1390,14 @@ function rhoaiHtml() {
   const f = (key, label, n) => `<label><input type="checkbox" data-pzf="${esc(key)}"${pz.off[key] ? '' : ' checked'}> ${esc(label)} <span style="color:var(--faint)">${n}</span></label>`;
   const count = (fn) => all.filter(fn).length;
   const pys = [...new Set(all.map(x => x.py).filter(Boolean))].sort();
-  return `<div class="pz-g"><div class="gh">RHOAI 버전별 추가 이미지 <span class="note">노트북 · 파이프라인 런타임 · 학습 이미지</span></div>
+  if (part === 'top') return `<div class="pz-g"><div class="gh">RHOAI 버전 / 채널 <span class="note">rhods-operator 채널과 아래 추가 이미지에 함께 적용</span></div>
     <div class="pz-f"><b>RHOAI 버전</b><select id="pzRv">${Object.entries(groups).map(([m, list]) => `<optgroup label="${esc(m)}">${list.map(v => `<option value="${esc(v)}"${v === pz.rv ? ' selected' : ''}>${esc(v)}${rhoaiChannels(v).length ? '' : ' (카탈로그에 없음)'}</option>`).join('')}</optgroup>`).join('')}</select>
 </div>
     <div class="pz-f"><b>Operator 채널</b>${chs.length ? `<label><input type="checkbox" id="pzPin"${pz.pin ? ' checked' : ''}> rhods-operator</label>
       <select id="pzRch"${pz.pin ? '' : ' disabled'}>${chs.map(c => `<option value="${esc(c.n)}"${c.n === pz.rch ? ' selected' : ''}>${esc(c.n)}${c.n === rhodsPkg().dc ? ' (default)' : ''} · head ${esc(c.h)}</option>`).join('')}</select>
       <select id="pzRmode"${pz.pin ? '' : ' disabled'}><option value="exact"${pz.rmode === 'exact' ? ' selected' : ''}>${esc(bv)} 만 (min = max)</option><option value="from"${pz.rmode === 'from' ? ' selected' : ''}>${esc(bv)} ~ head</option></select>`
-      : `<span class="tag warn">rhods-operator ${esc(bv)} 은 OCP ${esc(state.ocp)} 카탈로그에 없음 — 다른 RHOAI 버전 또는 OCP 버전 선택</span>`}</div>
+      : `<span class="tag warn">rhods-operator ${esc(bv)} 은 OCP ${esc(state.ocp)} 카탈로그에 없음 — 다른 RHOAI 버전 또는 OCP 버전 선택</span>`}</div></div>`;
+  return `<div class="pz-g"><div class="gh">RHOAI ${esc(pz.rv)} 추가 이미지 <span class="note">노트북 · 파이프라인 런타임 · 학습 이미지</span></div>
     <div class="pz-f"><b>종류</b>${Object.keys(RH_KIND).filter(k => count(x => x.kind === k)).map(k => f('kind:' + k, RH_KIND[k], count(x => x.kind === k))).join('')}</div>
     <div class="pz-f"><b>가속기</b>${['cpu', 'cuda', 'rocm'].filter(a => count(x => x.acc === a)).map(a => f('acc:' + a, a === 'cpu' ? 'CPU' : a === 'cuda' ? 'NVIDIA CUDA' : 'AMD ROCm', count(x => x.acc === a))).join('')}</div>
     ${pys.length > 1 ? `<div class="pz-f"><b>Python</b>${pys.map(p => f('py:' + p, p, count(x => x.py === p))).join('')}</div>` : ''}
