@@ -217,8 +217,17 @@ dialog .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .pz-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .pz-desc { color: var(--muted); font-size: 13px; }
 .pz-desc a { color: var(--info); }
-.pz-body { max-height: 56vh; overflow-y: auto; display: grid; gap: 10px; padding-right: 4px; }
-.pz-g { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+/* 창 높이 안에서 본문만 스크롤 (머리글·버튼은 고정), 섹션은 줄어들지 않음 */
+#presetDlg { max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); }
+#presetDlg[open] { display: flex; flex-direction: column; }
+#presetDlg .dh, #presetDlg .df { flex-shrink: 0; }
+#presetDlg .db { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+#presetDlg .df { flex-wrap: wrap; }
+#presetDlg .db { grid-template-columns: minmax(0, 1fr); }
+#presetDlg .db:focus { outline: none; }
+#presetDlg .pz-i .nm, #presetDlg .pz-i .nt { min-width: 0; overflow-wrap: anywhere; }
+.pz-body { display: flex; flex-direction: column; gap: 10px; }
+.pz-g { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; flex-shrink: 0; }
 .pz-g .gh { background: var(--panel-2); padding: 6px 10px; font-weight: 650; font-size: 13px; display: flex; gap: 8px; align-items: center; }
 .pz-g .gh .note { font-weight: 400; }
 .pz-i { display: grid; grid-template-columns: 22px minmax(150px, 230px) 1fr; gap: 2px 8px; padding: 6px 10px; border-top: 1px solid var(--line); font-size: 12.5px; align-items: start; cursor: pointer; }
@@ -246,6 +255,9 @@ details.pz-d summary { cursor: pointer; padding: 6px 10px; font-size: 12.5px; co
   .out-body { max-height: 60vh; }
 }
 @media (max-width: 640px) {
+  .pz-i { grid-template-columns: 22px 1fr; }
+  .pz-i .nt, .pz-i .sub { grid-column: 2; }
+  #presetDlg .df label { width: 100%; }
   .top { padding: 10px 16px; gap: 10px; }
   .top .meta { margin-left: 0; text-align: left; width: 100%; }
   .layout { padding: 12px 16px 32px; }
@@ -1311,7 +1323,20 @@ function imgInfo(ref) {
   const py = (n.match(/py3(\d+)/) || [])[1];
   return { kind, acc, py: py ? '3.' + py : '' };
 }
-const pz = { id: null, chk: {}, img: {}, rv: '', pin: true, off: {} };   // off: 'kind:workbench' 등 제외 필터
+const pz = { id: null, chk: {}, img: {}, rv: '', rvUser: false, pin: true, rch: '', rmode: 'exact', off: {} };   // off: 'kind:workbench' 등 제외 필터
+// RHOAI 버전 ↔ 현재 OCP 카탈로그의 rhods-operator
+const rhodsPkg = () => { const k = findKey('rhods-operator'); return k ? pkgOf(k) : null; };
+function rhoaiBundle(rv) {   // helper md 의 버전(3.5.1, 3.6) → 번들 버전(3.5.1, 3.6.0)
+  const r = RHOAI.d && RHOAI.d.versions[rv]; if (!r) return '';
+  return r.min || r.max || (rv.split('.').length === 2 ? rv.replace(/(-|$)/, '.0$1') : rv);
+}
+// 해당 버전이 들어 있는 채널: helper 예시 채널 → stable-x.y → eus-x.y → 나머지
+function rhoaiChannels(rv) {
+  const p = rhodsPkg(), b = rhoaiBundle(rv); if (!p || !b) return [];
+  const r = RHOAI.d.versions[rv], mm = b.split('.').slice(0, 2).join('.');
+  const rank = c => c.n === r.ch ? 0 : c.n === `stable-${mm}` ? 1 : c.n === `eus-${mm}` ? 2 : /^stable/.test(c.n) ? 3 : /^fast/.test(c.n) ? 4 : 5;
+  return (p.ch || []).filter(c => (c.v || []).includes(b)).sort((a, x) => rank(a) - rank(x) || a.n.localeCompare(x.n));
+}
 const rhoaiVers = () => RHOAI.d ? Object.keys(RHOAI.d.versions).sort(vcmp).reverse() : [];
 function rhoaiImgs() {
   const r = RHOAI.d && RHOAI.d.versions[pz.rv]; if (!r) return [];
@@ -1354,15 +1379,22 @@ function rhoaiHtml() {
   if (RHOAI.d === undefined) { loadRhoai().then(() => $('#presetDlg').open && renderPreset()); return '<div class="pz-g"><div class="gh">RHOAI 추가 이미지</div><div class="pz-f">불러오는 중…</div></div>'; }
   if (!RHOAI.d) return `<div class="pz-g"><div class="gh">RHOAI 추가 이미지</div><div class="pz-f">data/rhoai.js 가 없습니다 — <code>python3 build_data.py rhoai</code> 로 수집하세요.</div></div>`;
   const vs = rhoaiVers();
-  if (!vs.includes(pz.rv)) pz.rv = vs.find(v => !/-ea/.test(v)) || vs[0];
+  // 기본: 현재 OCP 카탈로그에 있는 가장 높은 정식 버전
+  if (!vs.includes(pz.rv) || !pz.rvUser) pz.rv = vs.find(v => !/-ea/.test(v) && rhoaiChannels(v).length) || vs.find(v => !/-ea/.test(v)) || vs[0];
+  const chs = rhoaiChannels(pz.rv), bv = rhoaiBundle(pz.rv);
+  if (!chs.some(c => c.n === pz.rch)) pz.rch = chs.length ? chs[0].n : '';
   const r = RHOAI.d.versions[pz.rv], all = r.img.map(imgInfo), sel = rhoaiImgs();
   const groups = {}; vs.forEach(v => { const m = v.split(/[.-]/).slice(0, 2).join('.'); (groups[m] = groups[m] || []).push(v); });
   const f = (key, label, n) => `<label><input type="checkbox" data-pzf="${esc(key)}"${pz.off[key] ? '' : ' checked'}> ${esc(label)} <span style="color:var(--faint)">${n}</span></label>`;
   const count = (fn) => all.filter(fn).length;
   const pys = [...new Set(all.map(x => x.py).filter(Boolean))].sort();
   return `<div class="pz-g"><div class="gh">RHOAI 버전별 추가 이미지 <span class="note">노트북 · 파이프라인 런타임 · 학습 이미지</span></div>
-    <div class="pz-f"><b>RHOAI 버전</b><select id="pzRv">${Object.entries(groups).map(([m, list]) => `<optgroup label="${esc(m)}">${list.map(v => `<option${v === pz.rv ? ' selected' : ''}>${esc(v)}</option>`).join('')}</optgroup>`).join('')}</select>
-      ${r.ch ? `<label title="helper 저장소의 ImageSetConfiguration 예시와 같은 채널/버전으로 rhods-operator 를 지정"><input type="checkbox" id="pzPin"${pz.pin ? ' checked' : ''}> rhods-operator → <span class="mono">${esc(r.ch)}${r.min ? ` (${esc(r.min)}${r.max && r.max !== r.min ? ' ~ ' + esc(r.max) : ''})` : ''}</span></label>` : ''}</div>
+    <div class="pz-f"><b>RHOAI 버전</b><select id="pzRv">${Object.entries(groups).map(([m, list]) => `<optgroup label="${esc(m)}">${list.map(v => `<option value="${esc(v)}"${v === pz.rv ? ' selected' : ''}>${esc(v)}${rhoaiChannels(v).length ? '' : ' (카탈로그에 없음)'}</option>`).join('')}</optgroup>`).join('')}</select>
+</div>
+    <div class="pz-f"><b>Operator 채널</b>${chs.length ? `<label><input type="checkbox" id="pzPin"${pz.pin ? ' checked' : ''}> rhods-operator</label>
+      <select id="pzRch"${pz.pin ? '' : ' disabled'}>${chs.map(c => `<option value="${esc(c.n)}"${c.n === pz.rch ? ' selected' : ''}>${esc(c.n)}${c.n === rhodsPkg().dc ? ' (default)' : ''} · head ${esc(c.h)}</option>`).join('')}</select>
+      <select id="pzRmode"${pz.pin ? '' : ' disabled'}><option value="exact"${pz.rmode === 'exact' ? ' selected' : ''}>${esc(bv)} 만 (min = max)</option><option value="from"${pz.rmode === 'from' ? ' selected' : ''}>${esc(bv)} ~ head</option></select>`
+      : `<span class="tag warn">rhods-operator ${esc(bv)} 은 OCP ${esc(state.ocp)} 카탈로그에 없음 — 다른 RHOAI 버전 또는 OCP 버전 선택</span>`}</div>
     <div class="pz-f"><b>종류</b>${Object.keys(RH_KIND).filter(k => count(x => x.kind === k)).map(k => f('kind:' + k, RH_KIND[k], count(x => x.kind === k))).join('')}</div>
     <div class="pz-f"><b>가속기</b>${['cpu', 'cuda', 'rocm'].filter(a => count(x => x.acc === a)).map(a => f('acc:' + a, a === 'cpu' ? 'CPU' : a === 'cuda' ? 'NVIDIA CUDA' : 'AMD ROCm', count(x => x.acc === a))).join('')}</div>
     ${pys.length > 1 ? `<div class="pz-f"><b>Python</b>${pys.map(p => f('py:' + p, p, count(x => x.py === p))).join('')}</div>` : ''}
@@ -1388,15 +1420,12 @@ function applyPreset() {
     const list = rhoaiImgs(), r = RHOAI.d.versions[pz.rv];
     state.imgs = state.imgs.filter(x => !/^RHOAI .* 추가 이미지$/.test(x.s));   // 다른 RHOAI 버전 이미지는 교체
     if (list.length) { addImgs(list, `RHOAI ${pz.rv} 추가 이미지`); imgs += list.length; }
-    const k = findKey('rhods-operator');
-    if (pz.pin && r.ch && k && presetChecked(P, { n: 'rhods-operator' })) {
-      const p = pkgOf(k), ch = (p.ch || []).find(c => c.n === r.ch);
-      if (ch) {
+    const k = findKey('rhods-operator'), bv = rhoaiBundle(pz.rv);
+    if (pz.pin && k && presetChecked(P, { n: 'rhods-operator' })) {
+      if (pz.rch && rhoaiChannels(pz.rv).some(c => c.n === pz.rch)) {
         toggleSel(k, true);
-        const cfg = {}; if (r.min && ch.v.includes(r.min)) cfg.min = r.min; if (r.max && ch.v.includes(r.max)) cfg.max = r.max;
-        state.sel[k].ch = { [r.ch]: cfg };
-        if (r.min && !cfg.min) notes.push(`rhods-operator ${r.min} 은 OCP ${state.ocp} 카탈로그 ${r.ch} 채널에 없음`);
-      } else notes.push(`rhods-operator 채널 ${r.ch} 없음 (OCP ${state.ocp})`);
+        state.sel[k].ch = { [pz.rch]: pz.rmode === 'exact' ? { min: bv, max: bv } : { min: bv } };
+      } else notes.push(`rhods-operator ${bv} 은 OCP ${state.ocp} 카탈로그에 없음`);
     }
   }
   let deps = 0;
@@ -1620,7 +1649,9 @@ function bind() {
     if (t.dataset.pi) (pz.chk[P.id] = pz.chk[P.id] || {})[t.dataset.pi] = t.checked;
     else if (t.dataset.pimg) (pz.img[P.id] = pz.img[P.id] || {})[t.dataset.pimg] = t.checked;
     else if (t.dataset.pzf) pz.off[t.dataset.pzf] = !t.checked;
-    else if (t.id === 'pzRv') pz.rv = t.value;
+    else if (t.id === 'pzRv') { pz.rv = t.value; pz.rvUser = true; }
+    else if (t.id === 'pzRch') pz.rch = t.value;
+    else if (t.id === 'pzRmode') pz.rmode = t.value;
     else if (t.id === 'pzPin') pz.pin = t.checked;
     else return;
     if (!t.dataset.pi && !t.dataset.pimg) renderPreset();
