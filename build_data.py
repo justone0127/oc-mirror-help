@@ -13,6 +13,9 @@
   # OpenShift 릴리스 버전/업그레이드 그래프 (api.openshift.com, 인증 불필요)
   python3 build_data.py releases --ocp 4.22 --arch amd64
 
+  # RHOAI 버전별 추가 이미지(노트북/파이프라인 런타임 등) - rhoai-disconnected-install-helper 저장소
+  python3 build_data.py rhoai --min 2.25
+
   # data/index.js 만 다시 생성
   python3 build_data.py index
 
@@ -20,6 +23,7 @@
   data/<ocp>/<catalog>.js   window.OCM.load(...) 호출 (file:// 로 열어도 동작)
   data/<ocp>/<catalog>.meta.json
   data/<ocp>/releases.js    OCP 릴리스 채널별 버전 + 업그레이드 경로
+  data/rhoai.js             RHOAI 버전별 additionalImages
   data/index.js             사용 가능한 버전/카탈로그 목록
 """
 import argparse
@@ -108,11 +112,15 @@ def load_fbc(src):
 
 
 def bundle_info(b):
-    info = {"version": None, "csv": {}, "maxOCP": None}
+    info = {"version": None, "csv": {}, "maxOCP": None, "req": [], "gvkreq": [], "gvk": []}
     for p in b.get("properties", []) or []:
         t, v = p.get("type"), p.get("value")
         if t == "olm.package" and isinstance(v, dict):
             info["version"] = v.get("version")
+        elif t == "olm.package.required" and isinstance(v, dict) and v.get("packageName"):
+            info["req"].append((v["packageName"], str(v.get("versionRange") or "")))
+        elif t in ("olm.gvk.required", "olm.gvk") and isinstance(v, dict) and v.get("kind"):
+            info["gvkreq" if t == "olm.gvk.required" else "gvk"].append(f'{v.get("group", "")}/{v.get("version", "")}/{v["kind"]}')
         elif t == "olm.csv.metadata" and isinstance(v, dict):
             info["csv"] = v
         elif t == "olm.maxOpenShiftVersion":
@@ -135,6 +143,11 @@ def channel_head(entries):
 def build_from_fbc(src):
     pkgs, channels, bundles, deprecations = load_fbc(src)
     binfo = {k: bundle_info(b) for k, b in bundles.items()}
+    # olm.gvk.required 해석용: GVK -> 제공 패키지
+    gvk_owner = {}
+    for (pkg, _n), bi in binfo.items():
+        for g in bi["gvk"]:
+            gvk_owner.setdefault(g, set()).add(pkg)
 
     dep_pkg, dep_ch = {}, {}
     for d in deprecations:
@@ -164,6 +177,13 @@ def build_from_fbc(src):
             hv, hn = head_vers[-1] if head_vers else (None, None)
             heads[c["name"]] = hn
             ch = {"n": c["name"], "h": hv, "v": sort_versions(vers)}
+            # head 번들의 OLM 의존성: rq = [[패키지, 버전 범위]], rg = [[group/version/Kind, 제공 패키지]]
+            hb = binfo.get((name, hn), {})
+            if hb.get("req"):
+                ch["rq"] = [list(x) for x in sorted(set(hb["req"]))]
+            if hb.get("gvkreq"):
+                ch["rg"] = [[g, sorted(gvk_owner.get(g, set()) - {name})[0] if gvk_owner.get(g, set()) - {name} else ""]
+                            for g in sorted(set(hb["gvkreq"]))]
             if (name, c["name"]) in dep_ch:
                 ch["dep"] = dep_ch[(name, c["name"])]
             chs.append(ch)
@@ -300,6 +320,62 @@ def write_releases(ocp, arch):
     print(f"  -> data/{ocp}/releases.js")
 
 
+# ---------------------------------------------------------------- RHOAI additional images
+RHOAI_REPO = "red-hat-data-services/rhoai-disconnected-install-helper"
+RHOAI_MD = re.compile(r"^rhoai-(\d+\.\d+(?:\.\d+)?(?:-ea\.\d+)?)\.md$")
+
+
+def _get(url, accept="application/json"):
+    h = {"Accept": accept, "User-Agent": "ocm-picker"}
+    if os.environ.get("GITHUB_TOKEN"):
+        h["Authorization"] = "Bearer " + os.environ["GITHUB_TOKEN"]
+    with urllib.request.urlopen(urllib.request.Request(url, headers=h), timeout=60) as r:
+        return r.read().decode("utf-8", "replace")
+
+
+def parse_rhoai_md(text):
+    """'# Additional images:' 목록과 ImageSetConfiguration 예시의 rhods-operator 채널/버전."""
+    imgs, sec = [], False
+    for line in text.splitlines():
+        if line.startswith("#"):
+            sec = line.lower().startswith("# additional images")
+            continue
+        m = re.match(r"^\s*-\s+(?:name:\s*)?(\S+[@:]\S+)\s*$", line)
+        if sec and m:
+            imgs.append(m.group(1))
+    out = {"img": list(dict.fromkeys(imgs))}
+    m = re.search(r"-\s*name:\s*rhods-operator\s*\n\s*channels:\s*\n\s*-\s*name:\s*(\S+)(?:\s*\n\s*minVersion:\s*(\S+))?(?:\s*\n\s*maxVersion:\s*(\S+))?", text)
+    if m:
+        out.update({k: v for k, v in (("ch", m.group(1)), ("min", m.group(2)), ("max", m.group(3))) if v})
+    return out
+
+
+def write_rhoai(min_ver):
+    files = json.loads(_get(f"https://api.github.com/repos/{RHOAI_REPO}/contents/"))
+    vers = sorted((m.group(1) for f in files if (m := RHOAI_MD.match(f["name"]))), key=_vkey)
+    vers = [v for v in vers if _vkey(v) >= _vkey(min_ver)]
+    data = {}
+    for v in vers:
+        try:
+            r = parse_rhoai_md(_get(f"https://raw.githubusercontent.com/{RHOAI_REPO}/main/rhoai-{v}.md", "text/plain"))
+        except Exception as e:
+            print(f"  [WARN] rhoai-{v}.md: {e}", file=sys.stderr)
+            continue
+        if r["img"]:
+            data[v] = r
+            print(f"  RHOAI {v}: {len(r['img'])} images" + (f", {r['ch']}" if r.get("ch") else ""))
+    if not data:
+        print("  [WARN] RHOAI 이미지 정보를 가져오지 못함", file=sys.stderr)
+        return
+    body = json.dumps({"repo": RHOAI_REPO, "versions": data,
+                       "generated": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")},
+                      separators=(",", ":"))
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(os.path.join(DATA_DIR, "rhoai.js"), "w", encoding="utf-8") as f:
+        f.write(f"window.OCM&&window.OCM.loadRhoai({body});\n")
+    print(f"  -> data/rhoai.js  ({len(data)} versions)")
+
+
 def write_index():
     entries, releases = [], []
     if os.path.isdir(DATA_DIR):
@@ -336,6 +412,8 @@ def main():
     s = sub.add_parser("releases")
     s.add_argument("--ocp", required=True, help="예: 4.22")
     s.add_argument("--arch", default="amd64", help="amd64 | arm64 | ppc64le | s390x | multi")
+    s = sub.add_parser("rhoai")
+    s.add_argument("--min", default="2.25", help="수집할 최소 RHOAI 버전 (기본 2.25)")
     sub.add_parser("index")
     a = ap.parse_args()
 
@@ -353,6 +431,9 @@ def main():
         ocp = a.ocp.lstrip("v")
         print(f"[{ocp} / releases ({a.arch})]")
         write_releases(ocp, a.arch)
+    elif a.cmd == "rhoai":
+        print(f"[RHOAI additional images >= {a.min}] github.com/{RHOAI_REPO}")
+        write_rhoai(a.min)
     write_index()
 
 

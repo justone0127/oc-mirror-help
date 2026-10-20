@@ -10,29 +10,36 @@
 #   ./collect.sh --check 4.21 4.22              # 카탈로그 이미지 존재 여부/생성일만 확인
 #
 #   ./collect.sh --releases-only 4.22           # OCP 릴리스 버전/업그레이드 경로만 갱신 (api.openshift.com)
+#   ./collect.sh --rhoai                        # RHOAI 버전별 추가 이미지(노트북 등)만 갱신 (GitHub, 인증 불필요)
 #
-# 환경변수: CATALOGS(-c 와 동일), AUTH(인증 파일), ARCH(기본 linux/amd64), PYTHON, RELEASES=0(릴리스 정보 생략)
+# 환경변수: CATALOGS(-c 와 동일), AUTH(인증 파일), ARCH(기본 linux/amd64), PYTHON, RELEASES=0(릴리스 정보 생략), RHOAI_MIN(기본 2.25)
 # 필요: oc (oc image extract/info), python3 (+ PyYAML 권장: 일부 패키지가 catalog.yaml 형식)
 set -euo pipefail
 
 cd "$(dirname "$0")"
-usage() { sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
+usage() { sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
 
 CATALOGS=${CATALOGS:-"redhat certified community"}
 CHECK=0
 RELEASES=${RELEASES:-1}
 RELEASES_ONLY=0
+RHOAI_ONLY=0
 VERSIONS=()
 while [ $# -gt 0 ]; do
   case "$1" in
     -c|--catalogs) CATALOGS=$2; shift 2 ;;
     --check)       CHECK=1; shift ;;
     --releases-only) RELEASES_ONLY=1; shift ;;
+    --rhoai)       RHOAI_ONLY=1; shift ;;
     -h|--help)     usage ;;
     -*)            echo "알 수 없는 옵션: $1"; usage 1 ;;
     *)             VERSIONS+=("${1#v}"); shift ;;
   esac
 done
+if [ $RHOAI_ONLY = 1 ]; then
+  ${PYTHON:-python3} build_data.py rhoai --min "${RHOAI_MIN:-2.25}"
+  [ ${#VERSIONS[@]} -ge 1 ] || exit 0
+fi
 [ ${#VERSIONS[@]} -ge 1 ] || usage 1
 CATALOGS=" $CATALOGS "; CATALOGS=${CATALOGS// all / redhat certified community marketplace }
 

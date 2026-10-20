@@ -101,6 +101,7 @@ push 후 1~2분 뒤 사이트에 반영됩니다.
 ```bash
 ./collect.sh 4.22                    # 카탈로그 + 릴리스 정보 다시 수집
 ./collect.sh --releases-only 4.22    # OCP 릴리스(패치 버전/업그레이드 경로)만 갱신 — 빠름, 로그인 불필요
+./collect.sh --rhoai                 # RHOAI 버전별 추가 이미지(노트북 등)만 갱신 — 새 RHOAI 버전이 나왔을 때
 git add data && git commit -m "Refresh OCP 4.22 data" && git push
 ```
 

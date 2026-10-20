@@ -5,7 +5,7 @@
  "image": "registry.redhat.io/redhat/redhat-operator-index:v4.21",
  "source": "fbc",
  "count": 149,
- "generated": "2026-10-19T07:11:10Z",
+ "generated": "2026-10-20T06:02:39Z",
  "digest": "sha256:96144fb2bf7504011655efc89ebc5ea46ddd20d8e5194deacbfb57d5dc3b568c",
  "created": "2026-10-16T19:29:09.031438172Z",
  "bundles": 4253

@@ -11,6 +11,8 @@
 | `collect.sh` | 카탈로그 이미지에서 `/configs`(FBC)를 추출해 `data/` 생성 |
 | `build_data.py` | FBC 디렉터리 또는 `oc-mirror list` 결과(.out)를 `data/<버전>/<카탈로그>.js` 로 변환, OCP 릴리스 그래프를 `data/<버전>/releases.js` 로 저장 |
 | `data/` | 생성된 데이터 (`index.js` 가 목록) |
+| `data/presets.js` | 기능별 오퍼레이터 묶음과 운영상 의존성 (손으로 편집) |
+| `data/rhoai.js` | RHOAI 버전별 추가 이미지 (`./collect.sh --rhoai`) |
 
 ## 데이터 수집 (인터넷 되는 서버)
 
@@ -27,6 +29,9 @@ podman login registry.redhat.io            # 또는 AUTH=~/pull-secret.json
 
 # OCP 릴리스 버전/업그레이드 경로만 갱신 (api.openshift.com, 인증 불필요 · collect.sh 실행 시 자동 포함)
 ./collect.sh --releases-only 4.22
+
+# RHOAI 버전별 추가 이미지(노트북·파이프라인 런타임·학습 이미지) 갱신 (GitHub, 인증 불필요)
+./collect.sh --rhoai
 
 # 추출 전에 카탈로그 이미지가 있는지/언제 빌드됐는지만 확인
 ./collect.sh --check -c all 4.21 4.22
@@ -81,7 +86,38 @@ python3 -m http.server 8080     # 팀에 공유할 때
   `curl` 다운로드·설치 명령을 한 번에 복사 (mirror.openshift.com)
   - mirror-registry 설치 옵션 입력: 호스트명:포트, 관리자 ID/비밀번호, `--quayRoot`(설치/설정), `--quayStorage`(이미지), `--sqliteStorage`(DB),
     SSL 인증서/키, 원격 설치(-H/-u/-k) → 사전 조건·설치·인증서 신뢰·로그인 확인 명령 생성 (비밀번호는 브라우저에 저장하지 않음)
+- **기능별 묶음**: RHOAI 3.x / OpenShift Virtualization / Service Mesh 3.x / OPP 처럼 기능 단위로 필요한 오퍼레이터를 그룹별로 체크해 한 번에 선택
+  - 현재 OCP 버전 카탈로그에 없는 오퍼레이터는 표시만 되고 선택되지 않음
+  - RHOAI: 버전(예: 3.5.1)을 고르면 [rhoai-disconnected-install-helper](https://github.com/red-hat-data-services/rhoai-disconnected-install-helper) 의
+    노트북/파이프라인 런타임/학습 이미지를 종류·가속기(CPU/CUDA/ROCm)·Python 버전으로 걸러 `additionalImages` 에 추가하고, `rhods-operator` 채널/버전도 맞춤
+  - MaaS·TrustyAI·Model Registry 용 DB 이미지(PostgreSQL, MySQL) 선택 추가
+- **의존성 확인**: 선택한 오퍼레이터의 의존성을 오른쪽 패널에서 자동 확인
+  - 카탈로그에 선언된 OLM 의존성(`olm.package.required`, `olm.gvk.required`, 채널 head 번들 기준)을 끝까지 따라가 **누락**을 표시
+    (예: `rhcl-operator` → authorino / limitador / dns-operator, `odf-dependencies` → cephcsi, rook-ceph, ocs, mcg …)
+  - 요구 버전이 미러될 버전(기본은 채널 head)과 맞지 않으면 **버전 불일치** 표시 → 맞는 채널/`minVersion` 으로 수정
+  - OLM 에 선언되지 않은 운영상 의존성(예: ACM → MCE, odf-operator → odf-dependencies, GPU Operator → NFD)은 **권장**으로 표시
+  - **추가 / 모두 추가·수정** 버튼으로 바로 반영. 표의 `의존 N` 태그와 행 상세에서도 채널별 의존성 확인
 - 선택은 브라우저에 자동 저장되며, **링크** 버튼으로 선택 상태가 담긴 URL을 공유할 수 있습니다.
+
+## 기능별 묶음(프리셋) 편집
+
+`data/presets.js` 만 고치면 됩니다 (코드 수정 불필요, push 하면 사이트에 반영).
+
+```js
+{
+  id: 'mypreset', name: '표시 이름', desc: '설명',
+  groups: [
+    { name: '코어', items: [
+      { n: 'rhods-operator', note: '설명' },                  // 패키지 이름
+      { n: 'gpu-operator-certified', c: 'certified' },        // 카탈로그 지정 (생략 시 redhat → certified → community)
+      { n: 'lvms-operator', off: true },                      // 기본 체크 해제
+    ] },
+  ],
+  images: [ { ref: 'registry.redhat.io/rhel9/postgresql-16:latest', note: '용도', off: true } ],
+}
+```
+
+OLM 에 선언되지 않은 의존성은 같은 파일의 `OCM_SOFT_DEPS` 에 `'패키지': [{ n: '필요한 패키지', why: '이유' }]` 형식으로 추가합니다.
 
 ## 버전 추가 / 데이터 갱신
 

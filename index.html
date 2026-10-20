@@ -126,6 +126,10 @@ table.ops td.ck, table.ops th.ck { width: 34px; text-align: center; }
 .tag.warn { background: var(--warn-soft); color: var(--warn); }
 .tag.mut { color: var(--faint); border-color: var(--line); }
 .tag.def { background: var(--text); color: var(--panel); }
+.tag.info { background: var(--info-soft); color: var(--info); }
+.deps { margin-top: 10px; font-size: 12.5px; }
+.deps .dl { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 2px 0; }
+.deps .dl .ch { color: var(--muted); font-family: var(--mono); font-size: 12px; min-width: 120px; }
 tr.detail td { background: var(--panel-2); padding: 12px 14px 16px 44px; }
 .detail-head { display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 13px; margin-bottom: 10px; }
 .detail-head .ds { flex: 1 1 100%; color: var(--text); }
@@ -149,6 +153,16 @@ table.chs select { padding: 2px 4px; font-size: 12px; max-width: 150px; }
 .sel-item .sub { color: var(--muted); font-size: 12px; grid-column: 1; }
 .sel-item .x { grid-row: 1 / span 2; grid-column: 2; align-self: center; }
 .sel-item.missing .nm { color: var(--warn); }
+.dep-box { border-bottom: 1px solid var(--line); font-size: 12.5px; flex-shrink: 0; max-height: 26vh; overflow-y: auto; }
+.dep-box.ok { padding: 7px 14px; color: var(--ok); }
+.dep-box .dh2 { display: flex; gap: 8px; align-items: center; padding: 8px 14px; background: var(--warn-soft); color: var(--warn); font-weight: 600; position: sticky; top: 0; }
+.dep-box .dh2 span { flex: 1; }
+.dep-box .di { display: grid; grid-template-columns: 1fr auto; gap: 1px 8px; padding: 5px 14px; border-top: 1px solid var(--line); }
+.dep-box .di .nm { font-family: var(--mono); word-break: break-all; }
+.dep-box .di .sub { color: var(--muted); font-size: 12px; }
+.dep-box .di button { grid-row: 1 / span 2; grid-column: 2; align-self: center; }
+.dep-box .di.soft .nm::after { content: ' 권장'; color: var(--info); font-family: inherit; font-size: 11px; }
+.dep-box .di.bad .nm { color: var(--warn); }
 .tabs { display: flex; border-bottom: 1px solid var(--line); padding: 0 8px; flex-shrink: 0; overflow-x: auto; }
 .tab { padding: 9px 10px; border: 0; background: none; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; font-size: 13px; }
 .tab.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
@@ -199,6 +213,25 @@ fieldset.mreg legend { font-weight: 650; padding: 0 4px; }
 dialog textarea { width: 100%; min-height: 200px; font-family: var(--mono); font-size: 12.5px; }
 dialog .note { color: var(--muted); font-size: 12.5px; }
 dialog .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+/* presets */
+.pz-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.pz-desc { color: var(--muted); font-size: 13px; }
+.pz-desc a { color: var(--info); }
+.pz-body { max-height: 56vh; overflow-y: auto; display: grid; gap: 10px; padding-right: 4px; }
+.pz-g { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.pz-g .gh { background: var(--panel-2); padding: 6px 10px; font-weight: 650; font-size: 13px; display: flex; gap: 8px; align-items: center; }
+.pz-g .gh .note { font-weight: 400; }
+.pz-i { display: grid; grid-template-columns: 22px minmax(150px, 230px) 1fr; gap: 2px 8px; padding: 6px 10px; border-top: 1px solid var(--line); font-size: 12.5px; align-items: start; cursor: pointer; }
+.pz-i:first-of-type { border-top: 0; }
+.pz-i .nm { font-family: var(--mono); word-break: break-all; }
+.pz-i .nt { color: var(--muted); }
+.pz-i .sub { grid-column: 2 / 4; color: var(--faint); font-size: 12px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.pz-i.na { opacity: .6; cursor: default; }
+.pz-f { display: flex; gap: 6px 14px; flex-wrap: wrap; align-items: center; padding: 6px 10px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+.pz-f b { color: var(--text); font-weight: 600; min-width: 64px; }
+.pz-f label { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+.pz-list { margin: 0; padding: 8px 10px; font: 11.5px/1.5 var(--mono); color: var(--muted); max-height: 180px; overflow: auto; white-space: pre; border-top: 1px solid var(--line); }
+details.pz-d summary { cursor: pointer; padding: 6px 10px; font-size: 12.5px; color: var(--info); border-top: 1px solid var(--line); }
 .result { font-size: 12.5px; white-space: pre-wrap; color: var(--muted); max-height: 160px; overflow: auto; }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(20px); opacity: 0; background: var(--text); color: var(--panel); padding: 9px 16px; border-radius: 8px; transition: .2s; pointer-events: none; z-index: 100; font-size: 13px; }
 .toast.on { opacity: 1; transform: translateX(-50%); }
@@ -229,6 +262,7 @@ dialog .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
     <label for="ocpSel">OCP 버전</label>
     <select id="ocpSel"></select>
   </div>
+  <button class="btn sm primary" id="presetBtn" title="RHOAI, OpenShift Virtualization 등 기능별로 필요한 오퍼레이터를 한 번에 선택">기능별 묶음</button>
   <button class="btn sm" id="importBtn" title="엑셀 등에서 복사한 오퍼레이터 이름 목록으로 한꺼번에 선택">목록 붙여넣기</button>
   <button class="btn sm" id="outBtn" title="oc-mirror list operators 결과 파일(.out)을 직접 불러오기">.out 불러오기</button>
   <button class="btn sm" id="dlToolBtn" title="oc-mirror, oc, openshift-install, mirror-registry 다운로드 링크">도구 다운로드</button>
@@ -276,6 +310,7 @@ dialog .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
       <button class="btn sm ghost" id="clearBtn">비우기</button>
     </div>
     <div class="sel-list" id="selList"></div>
+    <div class="dep-box" id="depBox" hidden></div>
     <div class="tabs" id="tabs">
       <button class="tab on" data-tab="isc">ImageSetConfiguration</button>
       <button class="tab" data-tab="tsv">엑셀</button>
@@ -388,9 +423,24 @@ dialog .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
   </div>
 </dialog>
 
+<dialog id="presetDlg" class="wide">
+  <div class="dh">기능별 오퍼레이터 묶음</div>
+  <div class="db">
+    <div class="pz-tabs" id="pzTabs"></div>
+    <div class="pz-desc" id="pzDesc"></div>
+    <div class="pz-body" id="pzBody"></div>
+  </div>
+  <div class="df">
+    <label class="note" style="margin-right:auto;display:inline-flex;gap:6px;align-items:center"><input type="checkbox" id="pzDeps" checked> 의존성도 함께 추가 (OLM 선언 + 운영상 필요)</label>
+    <button class="btn" data-close>닫기</button>
+    <button class="btn primary" id="pzGo">선택에 추가</button>
+  </div>
+</dialog>
+
 <div class="toast" id="toast"></div>
 
 <script src="data/index.js"></script>
+<script src="data/presets.js"></script>
 <script>
 (() => {
 'use strict';
@@ -495,12 +545,13 @@ const state = {
   sort: { k: 'n', dir: 1 },
   open: new Set(),          // expanded rows (key)
   sel: {},                  // key "cat/pkg" -> { ch: { [channel]: {min,max} } | null }
+  imgs: [],                 // 기능별 묶음에서 추가한 additionalImages [{ r: 이미지, s: 출처 }]
   tab: 'isc',
   opt: { rel: true, relCh: 'stable', relMin: '', relMax: '', shortest: true, graph: true, arch: 'amd64', kubevirt: false, split: false, explicitCh: true, addImg: '' },
   limit: 300,
 };
 function save() {
-  try { localStorage.setItem(LS_KEY, JSON.stringify({ ocp: state.ocp, sel: state.sel, opt: state.opt, tab: state.tab, fDisc: state.fDisc, fDep: state.fDep, cats: state.cats ? [...state.cats] : null })); } catch (e) {}
+  try { localStorage.setItem(LS_KEY, JSON.stringify({ ocp: state.ocp, sel: state.sel, imgs: state.imgs, opt: state.opt, tab: state.tab, fDisc: state.fDisc, fDep: state.fDep, cats: state.cats ? [...state.cats] : null })); } catch (e) {}
 }
 function restore() {
   let s = null;
@@ -510,6 +561,7 @@ function restore() {
   if (!s) return;
   if (s.ocp) state.ocp = s.ocp;
   if (s.sel) state.sel = s.sel;
+  if (Array.isArray(s.imgs)) state.imgs = s.imgs;
   if (s.opt) Object.assign(state.opt, s.opt);
   if (s.tab) state.tab = s.tab;
   if (typeof s.fDisc === 'boolean') state.fDisc = s.fDisc;
@@ -611,6 +663,8 @@ function infoTags(p) {
   else if (p.disc === false) t.push('<span class="tag mut" title="Disconnected 미지원으로 표시됨">No disconn.</span>');
   if (p.fips) t.push('<span class="tag mut">FIPS</span>');
   if (p.max) t.push(`<span class="tag mut" title="olm.maxOpenShiftVersion">max ${esc(p.max)}</span>`);
+  const dch = (p.ch || []).find(c => c.n === p.dc), dl = dch ? depsFor(p, { [dch.n]: {} }).filter(d => d.kind !== 'soft') : [];
+  if (dl.length) t.push(`<span class="tag info" title="${esc('기본 채널 head 의존성: ' + dl.map(d => d.n + (d.range ? ' ' + d.range : '')).join(', '))}">의존 ${new Set(dl.map(d => d.n)).size}</span>`);
   return t.join('');
 }
 
@@ -680,6 +734,7 @@ function detailRow(c, p, k) {
     ${p.dep ? `<div class="tag warn" style="display:block;margin-bottom:8px;padding:6px 8px;white-space:pre-wrap">${esc(p.dep)}</div>` : ''}
     <table class="chs"><thead><tr><th style="width:30px">미러</th><th>Channel</th><th>Head</th>${hasVers ? '<th>minVersion</th><th>maxVersion</th><th>버전</th>' : ''}</tr></thead>
     <tbody>${chRows || '<tr><td colspan="6" class="note">채널 정보 없음</td></tr>'}</tbody></table>
+    ${depsHtml(c, p)}
     ${!hasVers ? '<div class="note" style="margin-top:6px;color:var(--faint);font-size:12px">이 카탈로그는 .out 파일 기반이라 채널/버전 상세가 없습니다.</div>' : ''}
     <div style="margin-top:6px;color:var(--faint);font-size:12px">min/max 를 지정하지 않으면 oc-mirror v2 는 각 채널의 head 번들만 미러링합니다.</div>
   </td></tr>`;
@@ -701,7 +756,14 @@ function renderSide() {
     return `<div class="sel-item${p ? '' : ' missing'}"><span class="nm" data-goto="${esc(k)}">${esc(n)}</span>
       <button class="btn sm ghost x" data-rm="${esc(k)}" title="제거" aria-label="${esc(n)} 제거">✕</button>
       <span class="sub">${esc(catLabel(c))} · ${esc(chs)}</span></div>`;
-  }).join('') : `<div class="empty" style="padding:18px">왼쪽 표에서 오퍼레이터를 선택하세요.</div>`;
+  }).join('') : `<div class="empty" style="padding:18px">왼쪽 표에서 오퍼레이터를 선택하거나 <b>기능별 묶음</b>을 사용하세요.</div>`;
+  if (state.imgs.length) {
+    const src = imgSources();
+    $('#selList').insertAdjacentHTML('beforeend', `<div class="sel-item"><span class="nm" style="cursor:default">additionalImages ${state.imgs.length}개</span>
+      <button class="btn sm ghost x" data-imgrm="*" title="추가 이미지 모두 제거">✕</button>
+      <span class="sub">${src.map(([s, n]) => `${esc(s)} (${n})`).join(' · ')}</span></div>`);
+  }
+  renderDeps();
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === state.tab));
   renderOutput();
 }
@@ -786,6 +848,7 @@ function renderOutOpts() {
   G.push(`<div class="grp"><div class="gt">Operator · 출력</div>
     ${ck('explicitCh', '기본 채널도 명시')}
     <span class="seg"><label><input type="radio" name="split" data-opt="split" value=""${o.split ? '' : ' checked'}>파일 하나</label><label><input type="radio" name="split" data-opt="split" value="1"${o.split ? ' checked' : ''}>OCP / Operator 분리</label></span>
+    ${state.imgs.length ? `<div style="min-width:100%;display:flex;gap:6px;flex-wrap:wrap;align-items:center">기능별 묶음 이미지 ${imgSources().map(([s, n]) => `<span class="tag mut">${esc(s)} · ${n}개 <a href="#" data-imgrm="${esc(s)}" title="제거" style="color:inherit;text-decoration:none">✕</a></span>`).join('')}</div>` : ''}
     <label style="min-width:100%">additionalImages <input type="text" data-opt="addImg" value="${esc(o.addImg)}" placeholder="쉼표로 구분 (예: registry.redhat.io/ubi9/ubi:latest)" style="flex:1;width:auto"></label>
   </div>`);
   el.innerHTML = G.join('');
@@ -832,7 +895,14 @@ function operatorLines() {
     }
   }
   const imgs = (o.addImg || '').split(/[\s,]+/).filter(Boolean);
-  if (imgs.length) { L.push('  additionalImages:'); imgs.forEach(i => L.push(`  - name: ${i}`)); }
+  const extra = state.imgs.filter(x => !imgs.includes(x.r));
+  if (imgs.length || extra.length) {
+    L.push('  additionalImages:'); imgs.forEach(i => L.push(`  - name: ${i}`));
+    for (const [src] of imgSources()) {
+      L.push(`  # ${src}`);
+      extra.filter(x => x.s === src).forEach(x => L.push(`  - name: ${x.r}`));
+    }
+  }
   return L;
 }
 // [{name, text}] — 분리 모드면 OCP / Operator 두 파일
@@ -1059,6 +1129,283 @@ function download(name, text, type = 'text/plain') {
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
 }
 
+// ===================================================================== dependencies
+// OLM 의존성(olm.package.required / olm.gvk.required, 채널 head 번들 기준) + 운영상 의존성(data/presets.js 의 OCM_SOFT_DEPS)
+const SOFT = window.OCM_SOFT_DEPS || {};
+// 버전 범위 (blang/semver: >=, <=, >, <, =, != / 공백 = AND / || = OR)
+function satisfies(v, range) {
+  if (!range || !v) return true;
+  return range.split('||').some(part => part.trim().split(/[\s,]+/).filter(Boolean).every(tok => {
+    const m = /^(>=|<=|!=|==|=|>|<)?v?(.+)$/.exec(tok); if (!m) return true;
+    const c = vcmp(v, m[2]);
+    return { '>=': c >= 0, '<=': c <= 0, '>': c > 0, '<': c < 0, '!=': c !== 0 }[m[1]] ?? c === 0;
+  }));
+}
+const hasVers = p => (p.ch || []).some(c => (c.v || []).length);
+// 이름으로 패키지 찾기: 이미 선택한 것 → 선호 카탈로그 → 카탈로그 순서
+function findKey(n, prefer) {
+  const sel = Object.keys(state.sel).find(k => splitKey(k)[1] === n && pkgOf(k));
+  if (sel) return sel;
+  for (const c of [prefer, ...catsFor(state.ocp)].filter(Boolean)) { const d = catData(state.ocp, c); if (d && d.byName.has(n)) return keyOf(c, n); }
+  return null;
+}
+function depsFor(p, chs) {
+  const out = [];
+  for (const n of Object.keys(chs)) {
+    const ch = (p.ch || []).find(c => c.n === n); if (!ch) continue;
+    (ch.rq || []).forEach(([dn, r]) => out.push({ n: dn, range: r, kind: 'olm', ch: n }));
+    (ch.rg || []).forEach(([g, dn]) => out.push({ n: dn, gvk: g, kind: 'gvk', ch: n }));
+  }
+  (SOFT[p.n] || []).forEach(s => out.push({ n: s.n, why: s.why, kind: 'soft' }));
+  return out;
+}
+// 미러링될 버전: min/max 가 없으면 head 만
+function mirroredVersions(p, chs) {
+  const out = [];
+  for (const [n, cfg] of Object.entries(chs)) {
+    const ch = (p.ch || []).find(c => c.n === n); if (!ch) continue;
+    if (!cfg.min && !cfg.max) { if (ch.h) out.push(ch.h); continue; }
+    const max = cfg.max || ch.h;
+    (ch.v || []).forEach(v => { if ((!cfg.min || vcmp(v, cfg.min) >= 0) && (!max || vcmp(v, max) <= 0)) out.push(v); });
+  }
+  return out;
+}
+// 범위를 만족하는 채널: 기본 채널 head → 다른 채널 head → 범위 안 가장 높은 버전을 minVersion 으로
+function suggestChannel(p, range) {
+  const chs = p.ch || [], dc = chs.find(c => c.n === p.dc);
+  if (!range || !hasVers(p)) return { ch: p.dc || (chs[0] && chs[0].n) };
+  const ok = v => v && satisfies(v, range);
+  if (dc && ok(dc.h)) return { ch: dc.n };
+  const heads = chs.filter(c => ok(c.h)).sort((a, b) => vcmp(b.h, a.h));
+  if (heads.length) return { ch: heads[0].n };
+  for (const c of [dc, ...chs].filter(Boolean)) {
+    const vs = (c.v || []).filter(ok).sort(vcmp);
+    if (vs.length) return { ch: c.n, min: vs[vs.length - 1] };
+  }
+  return null;
+}
+const chsFromFix = (base, fix) => {
+  const cur = Object.assign({}, base);
+  cur[fix.ch] = fix.min ? { min: fix.min } : (cur[fix.ch] || {});
+  return cur;
+};
+// 선택 + 추가 예정(plan)을 따라가며 누락/버전 불일치 확인
+function resolveDeps() {
+  const plan = {}, issues = [], seen = new Set();
+  const chsOf = k => plan[k] || selChannels(k);
+  const queue = selKeys().filter(k => pkgOf(k));
+  let checked = 0;
+  while (queue.length) {
+    const k = queue.shift(); if (seen.has(k)) continue; seen.add(k);
+    const p = pkgOf(k);
+    for (const d of depsFor(p, chsOf(k))) {
+      checked++;
+      const tk = d.n ? findKey(d.n, splitKey(k)[0]) : null;
+      if (!tk) { if (!issues.some(i => i.type === 'absent' && i.d.n === d.n && i.d.gvk === d.gvk)) issues.push({ type: 'absent', d, from: p.n }); continue; }
+      const tp = pkgOf(tk);
+      if (state.sel[tk] || plan[tk]) {
+        if (d.range && hasVers(tp) && !mirroredVersions(tp, chsOf(tk)).some(v => satisfies(v, d.range))) {
+          const fix = suggestChannel(tp, d.range);
+          issues.push({ type: 'version', d, from: p.n, key: tk, fix, mv: mirroredVersions(tp, chsOf(tk)) });
+          if (fix) plan[tk] = chsFromFix(chsOf(tk), fix);
+        }
+        if (!seen.has(tk)) queue.push(tk);
+        continue;
+      }
+      const fix = suggestChannel(tp, d.range);
+      issues.push({ type: 'missing', d, from: p.n, key: tk, fix });
+      plan[tk] = fix ? { [fix.ch]: fix.min ? { min: fix.min } : {} } : selChannels(tk);
+      queue.push(tk);
+    }
+  }
+  return { issues, checked, plan };
+}
+function applyPlan(plan, only) {
+  let n = 0;
+  for (const [k, chs] of Object.entries(plan)) {
+    if (only && k !== only) continue;
+    const p = pkgOf(k); if (!p) continue;
+    const names = Object.keys(chs);
+    const plain = names.length === 1 && names[0] === p.dc && !chs[p.dc].min && !chs[p.dc].max;
+    state.sel[k] = { ch: plain ? null : chs }; n++;
+  }
+  return n;
+}
+let depResult = null;
+function renderDeps() {
+  const box = $('#depBox');
+  if (!selKeys().some(k => pkgOf(k))) { box.hidden = true; depResult = null; return; }
+  depResult = resolveDeps();
+  const { issues, checked } = depResult;
+  box.hidden = false;
+  if (!issues.length) {
+    box.className = 'dep-box ok';
+    box.textContent = `✓ 의존성 확인: 누락 없음${checked ? ` (의존 관계 ${checked}건 확인)` : ''}`;
+    return;
+  }
+  box.className = 'dep-box';
+  const fixable = issues.filter(i => i.fix && i.key).length;
+  const cnt = t => issues.filter(t).length;
+  const parts = [[cnt(i => i.type === 'missing' && i.d.kind !== 'soft'), '누락'], [cnt(i => i.type === 'missing' && i.d.kind === 'soft'), '권장'],
+    [cnt(i => i.type === 'version'), '버전 불일치'], [cnt(i => i.type === 'absent'), '카탈로그에 없음']].filter(x => x[0]).map(([n, t]) => `${t} ${n}`);
+  box.innerHTML = `<div class="dh2"><span>⚠ 의존성 ${esc(parts.join(' · '))}</span>${fixable ? `<button class="btn sm" data-depfix="*">모두 추가/수정</button>` : ''}</div>` +
+    issues.map((i, idx) => {
+      const via = `← ${esc(i.from)}${i.d.ch ? ` <span class="mono">(${esc(i.d.ch)})</span>` : ''}`;
+      const fx = i.fix ? `${esc(i.fix.ch)}${i.fix.min ? ` · minVersion ${esc(i.fix.min)}` : ''}` : '';
+      if (i.type === 'absent') return `<div class="di bad"><span class="nm">${esc(i.d.n || i.d.gvk)}</span><span class="sub">${via} · OCP ${esc(state.ocp)} 수집 카탈로그에 없음${i.d.gvk && !i.d.n ? ' (이 API 를 제공하는 패키지 없음)' : ''}</span></div>`;
+      if (i.type === 'version') return `<div class="di bad"><span class="nm">${esc(splitKey(i.key)[1])} ${esc(i.d.range)}</span>
+        <span class="sub">${via} · 미러될 버전 ${esc(i.mv.join(', ') || '-')} ${i.fix ? `→ ${fx}` : '→ 범위에 맞는 버전이 카탈로그에 없음'}</span>${i.fix ? `<button class="btn sm" data-depfix="${idx}">수정</button>` : ''}</div>`;
+      return `<div class="di${i.d.kind === 'soft' ? ' soft' : ''}"><span class="nm">${esc(splitKey(i.key)[1])}${i.d.range ? ` <span style="color:var(--muted)">${esc(i.d.range)}</span>` : ''}</span>
+        <span class="sub">${via}${i.d.why ? ` · ${esc(i.d.why)}` : i.d.gvk ? ` · API ${esc(i.d.gvk)}` : ''}${fx ? ` · ${fx}` : ''}</span><button class="btn sm" data-depfix="${idx}">추가</button></div>`;
+    }).join('');
+}
+// 상세 행: 채널별 의존성
+function depsHtml(c, p) {
+  const lines = [];
+  for (const ch of p.ch || []) {
+    const dl = depsFor(p, { [ch.n]: {} }).filter(d => d.kind !== 'soft');
+    if (!dl.length) continue;
+    lines.push(`<div class="dl"><span class="ch">${esc(ch.n)}</span>${dl.map(d => {
+      const tk = d.n && findKey(d.n, c), tp = tk && pkgOf(tk);
+      const st = !tk ? '<span class="tag warn">없음</span>' : state.sel[tk] ? (d.range && hasVers(tp) && !mirroredVersions(tp, selChannels(tk)).some(v => satisfies(v, d.range)) ? '<span class="tag warn">버전 확인</span>' : '<span class="tag ok">선택됨</span>') : '<span class="tag mut">미선택</span>';
+      return `<span class="tags" title="${esc(d.gvk || '')}"><span class="mono">${esc(d.n || d.gvk)}</span>${d.range ? ` <span class="mono" style="color:var(--muted)">${esc(d.range)}</span>` : ''} ${st}</span>`;
+    }).join('<span style="color:var(--faint)">·</span>')}</div>`);
+  }
+  const soft = (SOFT[p.n] || []).map(s => `<span class="tags"><span class="mono">${esc(s.n)}</span> <span style="color:var(--muted)">${esc(s.why)}</span> ${findKey(s.n, c) && state.sel[findKey(s.n, c)] ? '<span class="tag ok">선택됨</span>' : '<span class="tag mut">미선택</span>'}</span>`);
+  if (soft.length) lines.push(`<div class="dl"><span class="ch">운영상 필요</span>${soft.join('<span style="color:var(--faint)">·</span>')}</div>`);
+  return lines.length ? `<div class="deps"><b>의존성</b> <span style="color:var(--faint);font-size:12px">(채널 head 번들 기준 · 선택하면 오른쪽에서 누락 여부를 확인)</span>${lines.join('')}</div>` : '';
+}
+
+// ===================================================================== additional images
+function imgSources() {
+  const m = new Map(); state.imgs.forEach(x => m.set(x.s, (m.get(x.s) || 0) + 1));
+  return [...m.entries()];
+}
+function addImgs(refs, src) {
+  const set = new Set(refs);
+  state.imgs = state.imgs.filter(x => !set.has(x.r)).concat([...set].map(r => ({ r, s: src })));
+}
+function removeImgs(src) {
+  state.imgs = src === '*' ? [] : state.imgs.filter(x => x.s !== src);
+  refresh({ table: false });
+}
+
+// ===================================================================== presets (기능별 묶음)
+const PRESETS = window.OCM_PRESETS || [];
+const RHOAI = { d: undefined };
+window.OCM.loadRhoai = d => { RHOAI.d = d; };
+function loadRhoai() {
+  if (RHOAI.d !== undefined) return Promise.resolve(RHOAI.d);
+  return new Promise(res => {
+    const s = document.createElement('script'); s.src = 'data/rhoai.js';
+    s.onload = () => res(RHOAI.d || null); s.onerror = () => { RHOAI.d = null; res(null); };
+    document.head.appendChild(s);
+  });
+}
+const RH_KIND = { workbench: '워크벤치(노트북)', runtime: '파이프라인 런타임', training: '학습·분산(Ray/Training)', other: '기타' };
+function imgInfo(ref) {
+  const n = ref.split('/').slice(1).join('/').split('@')[0].split(':')[0];
+  const kind = /pipeline-runtime/.test(n) ? 'runtime' : /notebook|workbench|codeserver/.test(n) ? 'workbench'
+    : /ray|fms-hf-tuning|training|odh-th|instructlab|text-generation/.test(n) ? 'training' : 'other';
+  const acc = /cuda/.test(n) ? 'cuda' : /rocm/.test(n) ? 'rocm' : 'cpu';
+  const py = (n.match(/py3(\d+)/) || [])[1];
+  return { kind, acc, py: py ? '3.' + py : '' };
+}
+const pz = { id: null, chk: {}, img: {}, rv: '', pin: true, off: {} };   // off: 'kind:workbench' 등 제외 필터
+const rhoaiVers = () => RHOAI.d ? Object.keys(RHOAI.d.versions).sort(vcmp).reverse() : [];
+function rhoaiImgs() {
+  const r = RHOAI.d && RHOAI.d.versions[pz.rv]; if (!r) return [];
+  return r.img.filter(i => { const f = imgInfo(i); return !pz.off['kind:' + f.kind] && !pz.off['acc:' + f.acc] && !(f.py && pz.off['py:' + f.py]); });
+}
+function presetChecked(P, it) { const m = pz.chk[P.id] || {}; return m[it.n] ?? !it.off; }
+function renderPreset() {
+  const P = PRESETS.find(p => p.id === pz.id) || PRESETS[0]; if (!P) return;
+  pz.id = P.id;
+  $('#pzTabs').innerHTML = PRESETS.map(p => `<span class="chip${p.id === P.id ? ' on' : ''}" data-pz="${esc(p.id)}">${esc(p.name)}</span>`).join('');
+  $('#pzDesc').innerHTML = `${esc(P.desc || '')} <span style="color:var(--faint)">· OCP ${esc(state.ocp)} 카탈로그 기준</span>` +
+    ((P.links || []).length ? `<br>${P.links.map(l => `<a href="${esc(l.u)}" target="_blank" rel="noopener">${esc(l.t)}</a>`).join(' · ')}` : '');
+  const H = [];
+  for (const g of P.groups || []) {
+    H.push(`<div class="pz-g"><div class="gh">${esc(g.name)}${g.pick === 'one' ? ' <span class="note">환경에 맞게 선택</span>' : ''}</div>`);
+    for (const it of g.items) {
+      const k = findKey(it.n, it.c), p = k && pkgOf(k), on = p && presetChecked(P, it);
+      const dl = p ? depsFor(p, p.dc ? { [p.dc]: {} } : {}) : [];
+      const dn = [...new Set(dl.map(d => d.n).filter(Boolean))];
+      H.push(`<label class="pz-i${p ? '' : ' na'}"><input type="checkbox" data-pi="${esc(it.n)}"${on ? ' checked' : ''}${p ? '' : ' disabled'}>
+        <span class="nm">${esc(it.n)}</span><span class="nt">${esc(it.note || (p && p.d) || '')}</span>
+        <span class="sub">${p ? `<span class="tag cat-${CAT_LABEL[splitKey(k)[0]] ? splitKey(k)[0] : 'other'}">${esc(catLabel(splitKey(k)[0]))}</span> <span class="mono">${esc(p.dc)} · ${esc(headOf(p) || '-')}</span>${state.sel[k] ? ' <span class="tag ok">선택됨</span>' : ''}${p.dep ? ' <span class="tag warn">deprecated</span>' : ''}${dn.length ? ` <span>의존: ${esc(dn.join(', '))}</span>` : ''}`
+          : `<span class="tag warn">OCP ${esc(state.ocp)} 수집 카탈로그에 없음</span>`}</span></label>`);
+    }
+    if (g.pick === 'one' && P.notes) H.push(`<div class="pz-f">${esc(P.notes)}</div>`);
+    H.push('</div>');
+  }
+  if ((P.images || []).length) {
+    H.push(`<div class="pz-g"><div class="gh">추가 이미지 (additionalImages) <span class="note">태그는 환경에 맞게 확인</span></div>`);
+    P.images.forEach((im, i) => {
+      const on = (pz.img[P.id] || {})[i] ?? !im.off;
+      H.push(`<label class="pz-i"><input type="checkbox" data-pimg="${i}"${on ? ' checked' : ''}><span class="nm">${esc(im.ref)}</span><span class="nt">${esc(im.note || '')}</span></label>`);
+    });
+    H.push('</div>');
+  }
+  if (P.rhoai) H.push(rhoaiHtml());
+  $('#pzBody').innerHTML = H.join('');
+}
+function rhoaiHtml() {
+  if (RHOAI.d === undefined) { loadRhoai().then(() => $('#presetDlg').open && renderPreset()); return '<div class="pz-g"><div class="gh">RHOAI 추가 이미지</div><div class="pz-f">불러오는 중…</div></div>'; }
+  if (!RHOAI.d) return `<div class="pz-g"><div class="gh">RHOAI 추가 이미지</div><div class="pz-f">data/rhoai.js 가 없습니다 — <code>python3 build_data.py rhoai</code> 로 수집하세요.</div></div>`;
+  const vs = rhoaiVers();
+  if (!vs.includes(pz.rv)) pz.rv = vs.find(v => !/-ea/.test(v)) || vs[0];
+  const r = RHOAI.d.versions[pz.rv], all = r.img.map(imgInfo), sel = rhoaiImgs();
+  const groups = {}; vs.forEach(v => { const m = v.split(/[.-]/).slice(0, 2).join('.'); (groups[m] = groups[m] || []).push(v); });
+  const f = (key, label, n) => `<label><input type="checkbox" data-pzf="${esc(key)}"${pz.off[key] ? '' : ' checked'}> ${esc(label)} <span style="color:var(--faint)">${n}</span></label>`;
+  const count = (fn) => all.filter(fn).length;
+  const pys = [...new Set(all.map(x => x.py).filter(Boolean))].sort();
+  return `<div class="pz-g"><div class="gh">RHOAI 버전별 추가 이미지 <span class="note">노트북 · 파이프라인 런타임 · 학습 이미지</span></div>
+    <div class="pz-f"><b>RHOAI 버전</b><select id="pzRv">${Object.entries(groups).map(([m, list]) => `<optgroup label="${esc(m)}">${list.map(v => `<option${v === pz.rv ? ' selected' : ''}>${esc(v)}</option>`).join('')}</optgroup>`).join('')}</select>
+      ${r.ch ? `<label title="helper 저장소의 ImageSetConfiguration 예시와 같은 채널/버전으로 rhods-operator 를 지정"><input type="checkbox" id="pzPin"${pz.pin ? ' checked' : ''}> rhods-operator → <span class="mono">${esc(r.ch)}${r.min ? ` (${esc(r.min)}${r.max && r.max !== r.min ? ' ~ ' + esc(r.max) : ''})` : ''}</span></label>` : ''}</div>
+    <div class="pz-f"><b>종류</b>${Object.keys(RH_KIND).filter(k => count(x => x.kind === k)).map(k => f('kind:' + k, RH_KIND[k], count(x => x.kind === k))).join('')}</div>
+    <div class="pz-f"><b>가속기</b>${['cpu', 'cuda', 'rocm'].filter(a => count(x => x.acc === a)).map(a => f('acc:' + a, a === 'cpu' ? 'CPU' : a === 'cuda' ? 'NVIDIA CUDA' : 'AMD ROCm', count(x => x.acc === a))).join('')}</div>
+    ${pys.length > 1 ? `<div class="pz-f"><b>Python</b>${pys.map(p => f('py:' + p, p, count(x => x.py === p))).join('')}</div>` : ''}
+    <details class="pz-d"><summary>선택된 이미지 ${sel.length} / ${r.img.length}개 보기</summary><pre class="pz-list">${esc(sel.join('\n'))}</pre></details>
+    <div class="pz-f" style="color:var(--faint)">출처: <a href="https://github.com/${esc(RHOAI.d.repo)}/blob/main/rhoai-${esc(pz.rv)}.md" target="_blank" rel="noopener" style="color:var(--info)">rhoai-${esc(pz.rv)}.md</a> · 수집 ${esc((RHOAI.d.generated || '').slice(0, 10))}</div></div>`;
+}
+async function openPresets() {
+  if (!PRESETS.length) { toast('data/presets.js 가 없습니다'); return; }
+  renderPreset(); $('#presetDlg').showModal();
+}
+function applyPreset() {
+  const P = PRESETS.find(p => p.id === pz.id); if (!P) return;
+  let ops = 0, imgs = 0; const notes = [];
+  for (const g of P.groups || []) for (const it of g.items) {
+    if (!presetChecked(P, it)) continue;
+    const k = findKey(it.n, it.c);
+    if (!k) { notes.push(it.n); continue; }
+    if (!state.sel[k]) { toggleSel(k, true); ops++; }
+  }
+  const pi = (P.images || []).filter((im, i) => (pz.img[P.id] || {})[i] ?? !im.off);
+  pi.forEach(im => addImgs([im.ref], im.note || P.name)); imgs += pi.length;
+  if (P.rhoai && RHOAI.d && pz.rv) {
+    const list = rhoaiImgs(), r = RHOAI.d.versions[pz.rv];
+    state.imgs = state.imgs.filter(x => !/^RHOAI .* 추가 이미지$/.test(x.s));   // 다른 RHOAI 버전 이미지는 교체
+    if (list.length) { addImgs(list, `RHOAI ${pz.rv} 추가 이미지`); imgs += list.length; }
+    const k = findKey('rhods-operator');
+    if (pz.pin && r.ch && k && presetChecked(P, { n: 'rhods-operator' })) {
+      const p = pkgOf(k), ch = (p.ch || []).find(c => c.n === r.ch);
+      if (ch) {
+        toggleSel(k, true);
+        const cfg = {}; if (r.min && ch.v.includes(r.min)) cfg.min = r.min; if (r.max && ch.v.includes(r.max)) cfg.max = r.max;
+        state.sel[k].ch = { [r.ch]: cfg };
+        if (r.min && !cfg.min) notes.push(`rhods-operator ${r.min} 은 OCP ${state.ocp} 카탈로그 ${r.ch} 채널에 없음`);
+      } else notes.push(`rhods-operator 채널 ${r.ch} 없음 (OCP ${state.ocp})`);
+    }
+  }
+  let deps = 0;
+  if ($('#pzDeps').checked) for (let i = 0; i < 5; i++) { const n = applyPlan(resolveDeps().plan); if (!n) break; deps += n; }
+  refresh();
+  $('#presetDlg').close();
+  toast(`${P.name}: 오퍼레이터 ${ops}개${deps ? ` + 의존성 ${deps}개` : ''}${imgs ? ` · 이미지 ${imgs}개` : ''} 추가${notes.length ? ` · 없음: ${notes.join(', ')}` : ''}`);
+}
+
 // ===================================================================== tool downloads
 const MIRROR = 'https://mirror.openshift.com/pub/openshift-v4';
 const MREG = 'https://mirror.openshift.com/pub/cgw/mirror-registry';
@@ -1222,6 +1569,8 @@ function bind() {
   });
 
   $('#selList').addEventListener('click', e => {
+    const ir = e.target.closest('[data-imgrm]');
+    if (ir) { removeImgs(ir.dataset.imgrm); return; }
     const rm = e.target.closest('[data-rm]');
     if (rm) { delete state.sel[rm.dataset.rm]; refresh(); return; }
     const g = e.target.closest('[data-goto]');
@@ -1232,9 +1581,9 @@ function bind() {
       const row = document.querySelector(`tr.row[data-k="${CSS.escape(k)}"]`); if (row) row.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
   });
-  $('#clearBtn').addEventListener('click', () => { if (!Object.keys(state.sel).length || confirm('선택을 모두 비울까요?')) { state.sel = {}; refresh(); } });
+  $('#clearBtn').addEventListener('click', () => { if (!Object.keys(state.sel).length && !state.imgs.length || confirm('선택을 모두 비울까요?')) { state.sel = {}; state.imgs = []; refresh(); } });
   $('#shareBtn').addEventListener('click', () => {
-    const data = btoa(unescape(encodeURIComponent(JSON.stringify({ ocp: state.ocp, sel: state.sel, opt: state.opt }))));
+    const data = btoa(unescape(encodeURIComponent(JSON.stringify({ ocp: state.ocp, sel: state.sel, imgs: state.imgs, opt: state.opt }))));
     const url = location.href.split('#')[0] + '#s=' + data;
     history.replaceState(null, '', url); copyText(url);
   });
@@ -1247,6 +1596,7 @@ function bind() {
     if (t.type === 'text') renderBody(); else renderOutput();
     save();
   };
+  $('#outOpts').addEventListener('click', e => { const ir = e.target.closest('[data-imgrm]'); if (ir) { e.preventDefault(); removeImgs(ir.dataset.imgrm); } });
   $('#outOpts').addEventListener('change', e => { if (e.target.type !== 'text') onOpt(e); });
   $('#outOpts').addEventListener('input', e => { if (e.target.type === 'text') onOpt(e); });
   $('#outBody').addEventListener('click', e => {
@@ -1263,6 +1613,25 @@ function bind() {
 
   document.querySelectorAll('dialog [data-close]').forEach(b => b.addEventListener('click', () => b.closest('dialog').close()));
   $('#dlToolBtn').addEventListener('click', openTools);
+  $('#presetBtn').addEventListener('click', openPresets);
+  $('#pzTabs').addEventListener('click', e => { const c = e.target.closest('[data-pz]'); if (c) { pz.id = c.dataset.pz; renderPreset(); } });
+  $('#pzBody').addEventListener('change', e => {
+    const t = e.target, P = PRESETS.find(p => p.id === pz.id);
+    if (t.dataset.pi) (pz.chk[P.id] = pz.chk[P.id] || {})[t.dataset.pi] = t.checked;
+    else if (t.dataset.pimg) (pz.img[P.id] = pz.img[P.id] || {})[t.dataset.pimg] = t.checked;
+    else if (t.dataset.pzf) pz.off[t.dataset.pzf] = !t.checked;
+    else if (t.id === 'pzRv') pz.rv = t.value;
+    else if (t.id === 'pzPin') pz.pin = t.checked;
+    else return;
+    if (!t.dataset.pi && !t.dataset.pimg) renderPreset();
+  });
+  $('#pzGo').addEventListener('click', applyPreset);
+  $('#depBox').addEventListener('click', e => {
+    const b = e.target.closest('[data-depfix]'); if (!b || !depResult) return;
+    if (b.dataset.depfix === '*') { let n = 0; for (let i = 0; i < 5; i++) { const m = applyPlan(resolveDeps().plan); if (!m) break; n += m; } toast(`의존성 ${n}개 추가/수정`); }
+    else { const i = depResult.issues[+b.dataset.depfix]; if (i && i.key) applyPlan(depResult.plan, i.key); }
+    refresh();
+  });
   ['#tVer', '#tOs', '#tArch'].forEach(s => $(s).addEventListener('change', renderTools));
   $('#mregBox').addEventListener('input', () => { renderTools(); saveMreg(); });
   $('#toolCopy').addEventListener('click', () => copyText($('#toolCmd').textContent));
