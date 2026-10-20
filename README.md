@@ -87,6 +87,7 @@ python3 -m http.server 8080     # 팀에 공유할 때
   - mirror-registry 설치 옵션 입력: 호스트명:포트, 관리자 ID/비밀번호, `--quayRoot`(설치/설정), `--quayStorage`(이미지), `--sqliteStorage`(DB),
     SSL 인증서/키, 원격 설치(-H/-u/-k) → 사전 조건·설치·인증서 신뢰·로그인 확인 명령 생성 (비밀번호는 브라우저에 저장하지 않음)
 - **기능별 묶음**: RHOAI 3.x / OpenShift Virtualization / Service Mesh 3.x / OPP 처럼 기능 단위로 필요한 오퍼레이터를 그룹별로 체크해 한 번에 선택
+  - 오퍼레이터마다 미러링할 **채널 선택** (기본: default 채널, 채널별 head 버전·의존성 표시)
   - 현재 OCP 버전 카탈로그에 없는 오퍼레이터는 표시만 되고 선택되지 않음
   - RHOAI: 버전(예: 3.5.1)을 고르면 [rhoai-disconnected-install-helper](https://github.com/red-hat-data-services/rhoai-disconnected-install-helper) 의
     노트북/파이프라인 런타임/학습 이미지를 종류·가속기(CPU/CUDA/ROCm)·Python 버전으로 걸러 `additionalImages` 에 추가하고, `rhods-operator` 채널/버전도 맞춤
@@ -111,6 +112,7 @@ python3 -m http.server 8080     # 팀에 공유할 때
       { n: 'rhods-operator', note: '설명' },                  // 패키지 이름
       { n: 'gpu-operator-certified', c: 'certified' },        // 카탈로그 지정 (생략 시 redhat → certified → community)
       { n: 'lvms-operator', off: true },                      // 기본 체크 해제
+      { n: 'odf-operator', ch: 'stable-4.22' },               // 기본으로 고를 채널 (생략 시 default 채널, 창에서 변경 가능)
     ] },
   ],
   images: [ { ref: 'registry.redhat.io/rhel9/postgresql-16:latest', note: '용도', off: true } ],
